@@ -538,12 +538,10 @@ router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
 });
 
 // ─── GET /api/petitions/:id ─────────────────────────────────────────────────
-// Fetch a single petition by UUID or 8-char prefix (for track-by-ID)
-// Citizens can only view their own; officers their dept's; admin can view any
-router.get('/:id', requireAuth, async (req, res) => {
+// Fetch a single petition by UUID or 8-char prefix (for track-by-ID). PUBLIC ROUTE for QR tracking.
+router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { role, id: userId, department_id } = req.user;
 
         // Support both full UUID and 8-char prefix search
         const isFullUUID = id.length > 8;
@@ -572,15 +570,6 @@ router.get('/:id', requireAuth, async (req, res) => {
         }
 
         const petition = result.rows[0];
-
-        // RBAC — citizens may only view their own
-        if (role === 'citizen' && petition.citizen_email !== req.user.email) {
-            return res.status(403).json({ message: 'You can only track your own petitions.' });
-        }
-        // Officers may only view their department's
-        if (role === 'officer' && petition.department_id !== department_id) {
-            return res.status(403).json({ message: 'This petition belongs to a different department.' });
-        }
 
         res.json(petition);
     } catch (error) {

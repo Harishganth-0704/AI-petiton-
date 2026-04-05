@@ -73,7 +73,7 @@ function AppRoutes() {
       <Route path="/" element={homeRedirect()} />
       <Route path="/submit" element={<CitizenRoute><SubmitPetitionPage /></CitizenRoute>} />
       <Route path="/track" element={<ProtectedRoute><TrackPage /></ProtectedRoute>} />
-      <Route path="/track/:id" element={<ProtectedRoute><TrackPage /></ProtectedRoute>} />
+      <Route path="/track/:id" element={<AppLayout><TrackPage /></AppLayout>} /> {/* PUBLIC ROUTE */}
       <Route path="/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
 
       {/* Officer (and admin) */}

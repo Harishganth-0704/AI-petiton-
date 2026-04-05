@@ -96,6 +96,10 @@ export default function TrackPage() {
 
   // ── Fetch petition list ───────────────────────────────────────────────────
   const fetchList = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setListError('');
     try {
@@ -367,7 +371,8 @@ export default function TrackPage() {
       </Card>
 
       {/* ── FILTER ROW ───────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3">
+      {user && (
+        <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder={t('search_petitions_placeholder')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
@@ -389,9 +394,11 @@ export default function TrackPage() {
           </Select>
         )}
       </div>
+      )}
 
       {/* ── LIST ──────────────────────────────────────────────────────── */}
-      <div className="space-y-3">
+      {user && (
+        <div className="space-y-3">
         {loading ? (
           <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground text-sm">
             <Loader2 className="w-4 h-4 animate-spin" />Loading petitions...
@@ -498,6 +505,7 @@ export default function TrackPage() {
           ))
         )}
       </div>
+      )}
     </div>
   );
 }
