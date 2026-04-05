@@ -75,11 +75,13 @@ export default function TrackPage() {
       apiFetch(`/api/petitions/${id}/view`, { method: 'POST' }).catch(err => console.debug('View record failed:', err));
 
       // Check if feedback already exists
-      try {
-        const feedback = await apiFetch(`/api/feedbacks/petition/${id}`);
-        setHasFeedback(!!feedback);
-      } catch {
-        setHasFeedback(false);
+      if (user) {
+        try {
+          const feedback = await apiFetch(`/api/feedbacks/petition/${id}`);
+          setHasFeedback(!!feedback);
+        } catch {
+          setHasFeedback(false);
+        }
       }
 
       // If we provided an ID (clicked from list), scroll to top to see details
