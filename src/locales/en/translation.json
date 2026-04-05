@@ -1,0 +1,33 @@
+{
+    "translation": {
+        "app_name": "Civic Harmony",
+        "nav_dashboard": "Dashboard",
+        "nav_submit": "Submit Petition",
+        "nav_track": "Track Issues",
+        "nav_map": "Map View",
+        "nav_login": "Login",
+        "nav_register": "Register",
+        "login_title": "Welcome Back",
+        "login_subtitle": "Enter your credentials to access your account",
+        "register_title": "Create an Account",
+        "register_subtitle": "Join Civic Harmony to submit and track petitions",
+        "email": "Email Address",
+        "password": "Password",
+        "full_name": "Full Name",
+        "confirm_password": "Confirm Password",
+        "language_preference": "Language Preference",
+        "submit": "Submit",
+        "dashboard_title": "Civic Overview",
+        "dashboard_subtitle": "Real-time statistics of civic issues in your area",
+        "total_petitions": "Total Petitions",
+        "resolved": "Resolved",
+        "pending": "Pending",
+        "escalated": "Escalated",
+        "recent_petitions": "Recent Petitions",
+        "status_submitted": "Submitted",
+        "status_in_progress": "In Progress",
+        "status_resolved": "Resolved",
+        "logout": "Logout",
+        "no_petitions": "No petitions found."
+    }
+}

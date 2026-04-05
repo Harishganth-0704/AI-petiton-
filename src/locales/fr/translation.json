@@ -1,0 +1,33 @@
+{
+    "translation": {
+        "app_name": "Harmonie Civique",
+        "nav_dashboard": "Tableau de Bord",
+        "nav_submit": "Soumettre une Pétition",
+        "nav_track": "Suivre les Problèmes",
+        "nav_map": "Vue sur la Carte",
+        "nav_login": "Connexion",
+        "nav_register": "S'inscrire",
+        "login_title": "Bon retour",
+        "login_subtitle": "Entrez vos identifiants pour accéder",
+        "register_title": "Créer un Compte",
+        "register_subtitle": "Rejoignez pour soumettre et suivre les pétitions",
+        "email": "Adresse Email",
+        "password": "Mot de Passe",
+        "full_name": "Nom Complet",
+        "confirm_password": "Confirmer le Mot de Passe",
+        "language_preference": "Préférence de Langue",
+        "submit": "Soumettre",
+        "dashboard_title": "Aperçu Civique",
+        "dashboard_subtitle": "Statistiques en temps réel dans votre région",
+        "total_petitions": "Total des Pétitions",
+        "resolved": "Résolu",
+        "pending": "En attente",
+        "escalated": "Escaladé",
+        "recent_petitions": "Pétitions Récentes",
+        "status_submitted": "Soumis",
+        "status_in_progress": "En Cours",
+        "status_resolved": "Résolu",
+        "logout": "Déconnexion",
+        "no_petitions": "Aucune pétition trouvée."
+    }
+}

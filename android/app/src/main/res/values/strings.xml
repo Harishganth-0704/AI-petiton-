@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Civic Harmony</string>
+    <string name="title_activity_main">Civic Harmony</string>
+    <string name="package_name">com.civicharmony.app</string>
+    <string name="custom_url_scheme">com.civicharmony.app</string>
+</resources>
