@@ -10,6 +10,7 @@ import RegisterPage from "@/pages/RegisterPage";
 import DashboardPage from "@/pages/DashboardPage";
 import SubmitPetitionPage from "@/pages/SubmitPetitionPage";
 import TrackPage from "@/pages/TrackPage";
+import ProfilePage from "@/pages/ProfilePage";
 import MapPage from "@/pages/MapPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import LandingPage from "@/pages/LandingPage";
@@ -74,6 +75,7 @@ function AppRoutes() {
       <Route path="/submit" element={<CitizenRoute><SubmitPetitionPage /></CitizenRoute>} />
       <Route path="/track" element={<ProtectedRoute><TrackPage /></ProtectedRoute>} />
       <Route path="/track/:id" element={<AppLayout><TrackPage /></AppLayout>} /> {/* PUBLIC ROUTE */}
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
 
       {/* Officer (and admin) */}
@@ -87,18 +89,22 @@ function AppRoutes() {
   );
 }
 
+import { ThemeProvider } from "next-themes";
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AuthProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );

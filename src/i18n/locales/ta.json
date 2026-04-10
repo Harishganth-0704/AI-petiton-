@@ -1,7 +1,7 @@
 {
-    "app_name": "சமூக நல்லிணக்கம்",
-    "app_title": "சமூக நல்லிணக்கம்",
-    "app_tagline": "AI-உந்துதல் பொது மனு கண்காணிப்பு",
+    "app_name": "AI Petition Hub",
+    "app_title": "AI Petition Hub",
+    "app_tagline": "அறிவார்ந்த முறையில் மக்களுக்கான தீர்வு",
     "dashboard_subtitle": "பொது மனு அமைப்பு",
     "welcome": "வரவேற்கிறோம், {{name}}",
     "login": "உள்நுழைய",
@@ -252,5 +252,8 @@
     "standard_view": "சாதாரண பார்வை",
     "heatmap_mode": "வெப்ப வரைபட முறை",
     "loading_civic_intel": "தரவுகளை ஏற்றுகிறது...",
+    "leaderboard_title": "சமூகத்தின் சிறந்த பங்களிப்பாளர்கள்",
+    "visual_proof": "காட்சி ஆதாரம்",
+    "suggest_ai_reply": "AI மூலம் பதிலை உருவாக்கு",
     "showing": "காட்டப்படுகின்றன"
 }

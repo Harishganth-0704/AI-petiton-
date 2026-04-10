@@ -24,9 +24,9 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Civic Harmony',
-        short_name: 'Civic',
-        description: 'Bridge the gap between citizens and local government',
+        name: 'Smarter Petitions',
+        short_name: 'Smarter',
+        description: 'Empowering Citizens through Intelligence',
         theme_color: '#2563eb',
         background_color: '#ffffff',
         display: 'standalone',

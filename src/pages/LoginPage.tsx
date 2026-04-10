@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import logo from '@/assets/logo.png';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -81,11 +82,11 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl gov-gradient mx-auto flex items-center justify-center shadow-lg mb-4">
-            <FileText className="w-8 h-8 text-primary-foreground" />
+          <div className="w-20 h-20 rounded-2xl bg-white mx-auto flex items-center justify-center shadow-lg mb-4 p-1 overflow-hidden border border-muted/20">
+            <img src={logo} alt="Smarter Petitions Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">{t('app_name')}</h1>
-          <p className="text-base text-muted-foreground mt-2">{t('app_tagline')}</p>
+          <h1 className="text-3xl font-heading font-bold text-foreground tracking-tight">{t('app_name')}</h1>
+          <p className="text-sm font-medium text-muted-foreground mt-1.5">{t('app_tagline')}</p>
         </div>
 
         <Card className="shadow-xl border-0">

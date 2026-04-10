@@ -14,6 +14,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AIAnalysisReport } from '@/components/AIAnalysisReport';
 import { CommentsSection } from '@/components/CommentsSection';
+import { PetitionTimeline } from '@/components/PetitionTimeline';
+import { jsPDF } from 'jspdf';
 
 const getStatusLabels = (t: any): Record<string, string> => ({
   submitted: t('status_submitted'),
@@ -49,6 +51,8 @@ export default function TrackPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deptFilter, setDeptFilter] = useState('all');
+  const [urgencyFilter, setUrgencyFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
   const [petitions, setPetitions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState('');
@@ -151,11 +155,7 @@ export default function TrackPage() {
         setTrackedPetition(prev => ({ ...prev, has_upvoted: !currentHasUpvoted, upvotes_count: Math.max(0, parseInt(prev.upvotes_count || 0) + delta) }));
       }
 
-      if (currentHasUpvoted) {
-        await apiFetch(`/api/petitions/${petitionId}/upvote`, { method: 'DELETE' });
-      } else {
-        await apiFetch(`/api/petitions/${petitionId}/upvote`, { method: 'POST' });
-      }
+      await apiFetch(`/api/petitions/${petitionId}/upvote`, { method: 'POST' });
     } catch (err: any) {
       toast.error(err.message || 'Error updating upvote');
       // Revert optmistic update
@@ -202,6 +202,72 @@ export default function TrackPage() {
         })}
       </div>
     );
+  };
+
+  const downloadReceipt = () => {
+    if (!trackedPetition) return;
+    const doc = new jsPDF();
+    const primaryColor = [37, 99, 235]; // #2563eb
+
+    // Header
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AI PETITION HUB', 20, 25);
+    doc.setFontSize(10);
+    doc.text('OFFICIAL ACKNOWLEDGMENT RECEIPT', 20, 32);
+
+    // Body
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.text('DATE GENERATED:', 20, 50);
+    doc.text(new Date().toLocaleString(), 60, 50);
+
+    doc.setFontSize(14);
+    doc.text('PETITION DETAILS', 20, 65);
+    doc.line(20, 67, 190, 67);
+
+    doc.setFontSize(10);
+    doc.text('PETITION ID:', 20, 75);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(trackedPetition.id), 60, 75);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('TITLE:', 20, 85);
+    doc.setFont('helvetica', 'normal');
+    doc.text(trackedPetition.title, 60, 85, { maxWidth: 130 });
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('CATEGORY:', 20, 100);
+    doc.setFont('helvetica', 'normal');
+    doc.text(trackedPetition.category, 60, 100);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('CURRENT STATUS:', 20, 110);
+    doc.setFont('helvetica', 'normal');
+    doc.text(trackedPetition.status.toUpperCase(), 60, 110);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('SUBMITTED ON:', 20, 120);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date(trackedPetition.created_at).toLocaleString(), 60, 120);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('OFFICER REMARK:', 20, 130);
+    doc.setFont('helvetica', 'normal');
+    doc.text(trackedPetition.officer_remark || 'No remarks yet.', 60, 130, { maxWidth: 130 });
+
+    // Footer
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    const footerY = 280;
+    doc.text('This is an electronically generated document. No signature is required.', 105, footerY, { align: 'center' });
+    doc.text('Smarter Petitions - Powered by AI Governance', 105, footerY + 5, { align: 'center' });
+
+    doc.save(`Receipt_${String(trackedPetition.id).slice(0, 8)}.pdf`);
+    toast.success('Receipt downloaded successfully!');
   };
 
   const isCitizen = user?.role === 'citizen';
@@ -263,7 +329,11 @@ export default function TrackPage() {
                   </Badge>
                 </div>
 
-                <ProgressStepper status={trackedPetition.status} />
+                <PetitionTimeline 
+                  status={trackedPetition.status} 
+                  createdAt={trackedPetition.created_at} 
+                  updatedAt={trackedPetition.updated_at}
+                />
 
                 {trackedPetition.officer_remark && (
                   <div className="mt-3 text-xs p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
@@ -327,6 +397,9 @@ export default function TrackPage() {
                       {trackedPetition.upvotes_count || 0}
                     </Badge>
                   </Button>
+                  <Button variant="outline" size="sm" onClick={downloadReceipt} className="gap-2 h-9">
+                    <Calendar className="w-4 h-4" /> {t('download_receipt') || 'Download Receipt'}
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mt-4 text-xs text-muted-foreground">
@@ -380,15 +453,38 @@ export default function TrackPage() {
           <Input placeholder={t('search_petitions_placeholder')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]"><SelectValue placeholder={t('all_statuses')} /></SelectTrigger>
+          <SelectTrigger className="w-[140px] text-xs"><SelectValue placeholder={t('all_statuses')} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('all_statuses')}</SelectItem>
             {Object.entries(getStatusLabels(t)).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
+          <SelectTrigger className="w-[130px] text-xs">
+            <Badge variant="outline" className="mr-2 p-0 border-none shrink-0 inline-flex"><Zap className="w-3 h-3" /></Badge>
+            <SelectValue placeholder="All Urgency" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Urgency</SelectItem>
+            <SelectItem value="high">{t('urgency_high')}</SelectItem>
+            <SelectItem value="medium">{t('urgency_medium')}</SelectItem>
+            <SelectItem value="low">{t('urgency_low')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-[130px] text-xs">
+             <Clock className="w-3 h-3 mr-2 shrink-0" />
+             <SelectValue placeholder="Sort By" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="oldest">Oldest First</SelectItem>
+            <SelectItem value="upvoted">Most Supported</SelectItem>
+          </SelectContent>
+        </Select>
         {!isCitizen && (
           <Select value={deptFilter} onValueChange={setDeptFilter}>
-            <SelectTrigger className="w-[150px]"><SelectValue placeholder={t('all_depts')} /></SelectTrigger>
+            <SelectTrigger className="w-[140px] text-xs"><SelectValue placeholder={t('all_depts')} /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('all_depts')}</SelectItem>
               {DEPARTMENTS.map(d => <SelectItem key={d} value={d}>{DEPT_ICONS[d]} {t('dept_' + d)}</SelectItem>)}

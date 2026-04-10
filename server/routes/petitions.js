@@ -89,12 +89,23 @@ router.get('/', requireAuth, async (req, res) => {
             params.push(category);
             sql += ` AND p.category = $${params.length}`;
         }
+        if (req.query.priority && req.query.priority !== 'all') {
+            params.push(req.query.priority);
+            sql += ` AND p.priority = $${params.length}`;
+        }
         if (search) {
             params.push(`%${search}%`);
             sql += ` AND (p.title ILIKE $${params.length} OR p.description ILIKE $${params.length})`;
         }
 
-        sql += ` ORDER BY p.created_at DESC`;
+        const sort = req.query.sort || 'newest';
+        if (sort === 'oldest') {
+            sql += ` ORDER BY p.created_at ASC`;
+        } else if (sort === 'upvoted') {
+            sql += ` ORDER BY upvotes_count DESC, p.created_at DESC`;
+        } else {
+            sql += ` ORDER BY p.created_at DESC`;
+        }
 
         const result = await query(sql, params);
         res.json(result.rows);
@@ -217,6 +228,20 @@ router.get('/stats', requireAuth, async (req, res) => {
         const deptBreakdown = {};
         deptResult.rows.forEach(r => { deptBreakdown[r.department] = parseInt(r.count); });
 
+        // Fetch last 7 days trend data
+        const trendResult = await query(`
+          SELECT 
+            TO_CHAR(d, 'YYYY-MM-DD') as date,
+            COUNT(p.id) as count
+          FROM (
+            SELECT CURRENT_DATE - s.a AS d
+            FROM generate_series(0, 6) AS s(a)
+          ) d
+          LEFT JOIN petitions p ON TO_CHAR(p.created_at, 'YYYY-MM-DD') = TO_CHAR(d.d, 'YYYY-MM-DD')
+          GROUP BY d.d
+          ORDER BY d.d ASC
+        `);
+
         res.json({
             totalPetitions: parseInt(stats.total),
             resolved: parseInt(stats.resolved),
@@ -224,10 +249,63 @@ router.get('/stats', requireAuth, async (req, res) => {
             escalated: parseInt(stats.escalated),
             totalOfficers: parseInt(officerCountResult.rows[0].count),
             departmentBreakdown: deptBreakdown,
+            trend: trendResult.rows.map(r => ({ date: r.date, count: parseInt(r.count) }))
         });
     } catch (error) {
         console.error('Get stats error:', error);
         res.status(500).json({ message: 'Error fetching stats' });
+    }
+});
+
+// ─── POST /api/petitions/:id/upvote ──────────────────────────────────────────
+// citizen only: toggles an upvote on a petition
+router.post('/:id/upvote', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        // Check if user already upvoted
+        const existing = await query(
+            'SELECT id FROM petition_upvotes WHERE petition_id = $1 AND user_id = $2',
+            [id, userId]
+        );
+
+        if (existing.rowCount > 0) {
+            // Already upvoted → remove it
+            await query('DELETE FROM petition_upvotes WHERE petition_id = $1 AND user_id = $2', [id, userId]);
+            await query('UPDATE petitions SET upvotes_count = GREATEST(0, COALESCE(upvotes_count, 0) - 1) WHERE id = $1', [id]);
+            const updated = await query('SELECT upvotes_count FROM petitions WHERE id = $1', [id]);
+            return res.json({ upvoted: false, upvotes_count: updated.rows[0].upvotes_count });
+        } else {
+            // Not upvoted → add it
+            await query('INSERT INTO petition_upvotes (petition_id, user_id) VALUES ($1, $2)', [id, userId]);
+            await query('UPDATE petitions SET upvotes_count = COALESCE(upvotes_count, 0) + 1 WHERE id = $1', [id]);
+            const updated = await query('SELECT upvotes_count FROM petitions WHERE id = $1', [id]);
+            return res.json({ upvoted: true, upvotes_count: updated.rows[0].upvotes_count });
+        }
+    } catch (error) {
+        console.error('Upvote error:', error);
+        // Table may not exist yet — return graceful error
+        res.status(500).json({ message: 'Upvote failed. Make sure petition_upvotes table exists.' });
+    }
+});
+
+/// ─── GET /api/petitions/:id/suggest-reply ─────────────────────────────────────
+// officer only: generates a suggested reply for the petition
+router.get('/:id/suggest-reply', requireAuth, requireRole('officer'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const petitionResult = await query('SELECT * FROM petitions WHERE id = $1', [id]);
+        
+        if (petitionResult.rowCount === 0) {
+            return res.status(404).json({ message: 'Petition not found' });
+        }
+
+        const reply = await aiService.generateOfficialReply(petitionResult.rows[0]);
+        res.json({ reply });
+    } catch (error) {
+        console.error('Suggest reply error:', error);
+        res.status(500).json({ message: 'Error generating suggested reply' });
     }
 });
 
@@ -258,12 +336,12 @@ router.get('/map', requireAuth, async (req, res) => {
 // ─── POST /api/petitions/analyze ──────────────────────────────────────────────
 router.post('/analyze', requireAuth, async (req, res) => {
     try {
-        const { title, description, category } = req.body;
+        const { title, description, category, location } = req.body;
         if (!title || !description) {
             return res.status(400).json({ message: 'title and description are required' });
         }
 
-        const aiResult = await aiService.analyzePetition(title, description, category);
+        const aiResult = await aiService.analyzePetition(title, description, category, location);
         res.json(aiResult);
     } catch (error) {
         console.error('AI Analysis Route Error:', error);
@@ -298,7 +376,8 @@ router.post('/', requireAuth, requireRole('citizen'), strictLimiter, upload.fiel
         const departmentId = deptResult.rows[0]?.id || null;
 
         // Run Server-side AI Analysis
-        const aiResult = await aiService.analyzePetition(title, description, category);
+        const mediaPath = req.files?.media ? req.files.media[0].path : null;
+        const aiResult = await aiService.analyzePetition(title, description, category, location, mediaPath);
 
         // Dynamic Priority and Status based on AI Analysis
         let priority = 'medium';
@@ -314,8 +393,8 @@ router.post('/', requireAuth, requireRole('citizen'), strictLimiter, upload.fiel
             initialStatus = 'rejected';
             isSpam = true;
         } else {
-            if (aiAnalysis && aiAnalysis.urgencyScore > 0.8) priority = 'high';
-            else if (aiAnalysis && aiAnalysis.urgencyScore < 0.4) priority = 'low';
+            if (aiResult.urgencyScore > 0.8) priority = 'high';
+            else if (aiResult.urgencyScore < 0.4) priority = 'low';
         }
 
         console.log(`[SUBMIT] Data ready for DB. Officer Remark Length: ${officerRemark?.length}`);
@@ -417,6 +496,26 @@ router.patch('/:id/status', requireAuth, requireRole('officer', 'admin'), async 
         }
 
         res.json({ message: 'Status updated', petition: result.rows[0] });
+
+        // Database Notification creation
+        try {
+            const petitionData = await query('SELECT citizen_id, title FROM petitions WHERE id = $1', [id]);
+            if (petitionData.rows.length > 0) {
+                const citizenId = petitionData.rows[0].citizen_id;
+                const petitionTitle = petitionData.rows[0].title;
+                await query(`
+                    INSERT INTO notifications (user_id, petition_id, title, message, type)
+                    VALUES ($1, $2, $3, $4, 'status_update')
+                `, [
+                    citizenId, 
+                    id, 
+                    'Petition Update!', 
+                    `Your petition "${petitionTitle}" has been updated to ${status}. Remark: ${remark.trim()}`
+                ]);
+            }
+        } catch (nErr) {
+            console.error('DB Notification Insert Error:', nErr);
+        }
 
         // Async notifications (email + SMS) for status update
         // Fetch citizen info (not the requesting officer)
@@ -668,6 +767,32 @@ router.post('/:id/reanalyze', requireAuth, requireRole('officer', 'admin'), asyn
     } catch (error) {
         console.error('Re-analyze error:', error);
         res.status(500).json({ message: 'Error during AI analysis' });
+    }
+});
+
+// ─── POST /api/petitions/auto-escalate ───────────────────────────────────────
+// admin only: automatically escalates petitions older than 48 hours
+router.post('/auto-escalate', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const escalationThreshold = '48 hours';
+        
+        const result = await query(`
+            UPDATE petitions 
+            SET status = 'escalated', 
+                officer_remark = COALESCE(officer_remark, '') || '\n[AUTO-ESCALATED] No action taken within 48 hours.',
+                updated_at = now()
+            WHERE status IN ('submitted', 'pending')
+              AND created_at < (now() - interval '${escalationThreshold}')
+            RETURNING id, title, created_at
+        `);
+
+        res.json({
+            message: `Auto-escalation check complete. ${result.rowCount} petitions escalated.`,
+            escalatedPetitions: result.rows
+        });
+    } catch (error) {
+        console.error('Auto-escalation error:', error);
+        res.status(500).json({ message: 'Error during auto-escalation' });
     }
 });
 

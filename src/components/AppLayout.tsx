@@ -15,7 +15,10 @@ import {
 } from '@/components/ui/sheet';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeToggle } from './ThemeToggle';
+import { NotificationCenter } from './NotificationCenter';
 import GrievanceChatbot from './GrievanceChatbot';
+import logo from '@/assets/logo.png';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -66,9 +69,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="gov-gradient sticky top-0 z-50 shadow-lg">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-2 lg:gap-8">
-            <Link to="/" className="flex items-center gap-2 shrink-0">
-              <div className="w-9 h-9 rounded-lg bg-primary-foreground/20 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-primary-foreground" />
+            <Link to="/" className="flex items-center gap-2 shrink-0 group">
+              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center p-0.5 shadow-sm group-hover:scale-105 transition-transform">
+                <img src={logo} alt="Logo" className="w-full h-full object-contain" />
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-sm font-heading font-bold text-primary-foreground leading-tight">{t('app_title')}</h1>
@@ -130,6 +133,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <LanguageSwitcher />
+            <ThemeToggle />
+            <NotificationCenter />
             <Button
               variant="ghost"
               size="icon"

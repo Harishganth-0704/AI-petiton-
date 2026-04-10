@@ -165,9 +165,29 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold">{t('admin_dashboard_title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('admin_dashboard_subtitle')}</p>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-heading font-bold">{t('admin_dashboard_title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('admin_dashboard_subtitle')}</p>
+        </div>
+        <Button 
+          variant="outline" 
+          className="bg-destructive/5 text-destructive border-destructive/20 hover:bg-destructive hover:text-white transition-all gap-2"
+          onClick={async () => {
+            try {
+              const res = await apiFetch('/api/petitions/auto-escalate', { method: 'POST' });
+              toast.success(res.message);
+              // Refresh list and stats
+              apiFetch(`/api/petitions?reviewed=${activeTab === 'reviewed'}`).then(setPetitions).catch(console.error);
+              apiFetch('/api/petitions/stats').then(setStats).catch(console.error);
+            } catch (err: any) {
+              toast.error(err.message || 'Escalation failed');
+            }
+          }}
+        >
+          <ShieldAlert className="w-4 h-4" />
+          {t('trigger_escalation') || 'Auto-Escalate Petitions'}
+        </Button>
       </div>
 
       {/* Admin stat cards */}

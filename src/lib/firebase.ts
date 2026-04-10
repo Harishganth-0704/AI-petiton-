@@ -1,4 +1,4 @@
-// Firebase configuration for Civic Harmony
+// Firebase configuration for Smarter Petitions
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 

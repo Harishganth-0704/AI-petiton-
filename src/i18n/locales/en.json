@@ -1,7 +1,7 @@
 {
-    "app_name": "Civic Harmony",
-    "app_title": "Civic Harmony",
-    "app_tagline": "AI-Powered Public Petition Tracking",
+    "app_name": "AI Petition Hub",
+    "app_title": "AI Petition Hub",
+    "app_tagline": "Empowering Citizens through Intelligence",
     "dashboard_subtitle": "Public Petition System",
     "welcome": "Welcome, {{name}}",
     "login": "Login",
@@ -128,7 +128,7 @@
     "nav_submit": "Submit Petition",
     "nav_track": "Track Issue",
     "nav_map": "Map View",
-    "footer_text": "© 2026 CivicHarmony AI — Secure Public Petition & Tracking System",
+    "footer_text": "© 2026 AI Petition Hub — Secure Public Petition & Tracking System",
     "my_petitions": "My Petitions",
     "total_petitions": "Total Petitions",
     "dept_distribution": "Department Distribution",
@@ -257,5 +257,7 @@
     "standard_view": "Standard View",
     "heatmap_mode": "Heatmap Mode",
     "loading_civic_intel": "Loading Civic Intel...",
+    "leaderboard_title": "Civic Hero Leaderboard",
+    "visual_proof": "Visual Proof",
     "showing": "Showing"
 }

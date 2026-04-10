@@ -9,6 +9,7 @@ export interface AuthUser {
   role: UserRole;
   department_id: number | null;
   language_pref?: string;
+  phone?: string;
   points: number;
 }
 

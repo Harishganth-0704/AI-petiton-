@@ -25,6 +25,7 @@ export default function OfficerDashboard() {
     const [isReanalyzing, setIsReanalyzing] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
+    const [isSuggesting, setIsSuggesting] = useState<string | null>(null);
 
     const STATUS_OPTIONS = [
         { value: 'pending', label: t('status_pending') },
@@ -45,6 +46,19 @@ export default function OfficerDashboard() {
     // Update a field directly on the petition object in state
     const updateField = (petId: any, field: string, value: string) => {
         setPetitions(prev => prev.map(p => p.id === petId ? { ...p, [field]: value } : p));
+    };
+
+    const handleSuggestReply = async (id: string) => {
+        setIsSuggesting(id);
+        try {
+            const data = await apiFetch(`/api/petitions/${id}/suggest-reply`);
+            updateField(id, '_remark', data.reply);
+            toast.success('AI Suggested a formal reply! ✍️');
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to generate suggestion');
+        } finally {
+            setIsSuggesting(null);
+        }
     };
 
     const handleReanalyze = async (id: string) => {
@@ -231,6 +245,17 @@ export default function OfficerDashboard() {
                                         <span className="flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-tight shrink-0">
                                             <Sparkles className="w-3 h-3" /> AI
                                         </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-[10px] font-bold uppercase tracking-widest gap-1 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                            onClick={() => handleSuggestReply(pet.id)}
+                                            disabled={isSuggesting === pet.id}
+                                        >
+                                            {isSuggesting === pet.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />}
+                                            Suggest Formal Reply
+                                        </Button>
+                                        <div className="h-4 w-px bg-border mx-1" />
                                         {generateSmartReplies(pet.category).map((reply, idx) => (
                                             <button
                                                 key={idx}

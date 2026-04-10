@@ -12,6 +12,8 @@ import dashboardRoutes from './routes/dashboard.js';
 import feedbackRoutes from './routes/feedbacks.js';
 import chatbotRoutes from './routes/chatbot.js';
 import commentRoutes from './routes/comments.js';
+import notificationRoutes from './routes/notifications.js';
+import userRoutes from './routes/users.js';
 import pool from './db.js';
 
 const app = express();
@@ -31,6 +33,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/comments', commentRoutes);    // Internal limits applied in routes
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {

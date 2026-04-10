@@ -41,25 +41,28 @@ export default function DashboardPage() {
     departmentBreakdown: {} as Record<string, number>,
   });
   const [dashboardStats, setDashboardStats] = useState({
-    total_petitions: 0, resolved_petitions: 0, resolution_rate: 0, avg_sla_days: 0
+    total_petitions: 0, resolved_petitions: 0, resolution_rate: 0, avg_sla_days: 0, trend: [] as any[]
   });
   const [recentPetitions, setRecentPetitions] = useState<any[]>([]);
   const [trendingPetitions, setTrendingPetitions] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [stats, all, dbStats, trending] = await Promise.all([
+        const [stats, all, dbStats, trending, topUsers] = await Promise.all([
           apiFetch('/api/petitions/stats'),
           apiFetch('/api/petitions'),
           apiFetch('/api/dashboard/stats'),
           apiFetch('/api/petitions/trending?category=all'),
+          apiFetch('/api/users/leaderboard'),
         ]);
         setStats(stats);
         setDashboardStats(dbStats);
         setRecentPetitions(all.slice(0, 5));
         setTrendingPetitions(trending);
+        setLeaderboard(topUsers || []);
       } catch (err) {
         console.error('Dashboard fetch error:', err);
       } finally {
@@ -152,8 +155,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts */}
-      {deptData.length > 0 && (
-        <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Existing Pie Chart */}
+        {deptData.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-heading">{t('dept_distribution')}</CardTitle>
@@ -177,7 +181,47 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+        )}
 
+        {/* New Area Chart for Trends */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-heading flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" /> {t('petition_trends') || 'Petition Submission Trends'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={dashboardStats.trend.length > 0 ? dashboardStats.trend : [{ date: 'No Data', count: 0 }]}>
+                <defs>
+                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 10 }} 
+                  tickFormatter={(str) => {
+                    if (str === 'No Data') return str;
+                    const date = new Date(str);
+                    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  }}
+                />
+                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                />
+                <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorCount)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bar Chart Moved below */}
+      {deptData.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-heading">{t('petitions_by_dept')}</CardTitle>
@@ -185,9 +229,9 @@ export default function DashboardPage() {
             <CardContent>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={deptData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 25%, 90%)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                   <Tooltip />
                   <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                     {deptData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
@@ -196,53 +240,115 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </div>
       )}
 
-      {/* Recent petitions */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base font-heading">{t('recent_petitions')}</CardTitle>
-          <Link to="/track" className="text-xs text-primary hover:underline">{t('nav_track')} →</Link>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground text-center py-4">{t('loading')}</p>
-          ) : !recentPetitions || recentPetitions.length === 0 ? (
-            <div className="text-center py-8 space-y-3">
-              <p className="text-2xl">📋</p>
-              <p className="text-sm font-medium">{t('no_petitions_yet')}</p>
-              <p className="text-xs text-muted-foreground">{t('no_petitions_yet_desc')}</p>
-              <Link to="/submit" className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline">
-                {t('submit_first_petition')}
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentPetitions.map(pet => (
-                <div key={pet.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-xl shrink-0">{pet.category ? (DEPT_ICONS[pet.category] || '📋') : '📋'}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary/60">{t('dept_' + pet.category)}</span>
-                        <span className="text-[10px] text-muted-foreground/50">•</span>
-                        <p className="text-sm font-medium truncate">{pet.title}</p>
+      {/* Recently Submitted and Leaderboard */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Recent petitions */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base font-heading">{t('recent_petitions')}</CardTitle>
+            <Link to="/track" className="text-[10px] text-primary hover:underline uppercase tracking-widest font-bold font-heading">{t('nav_track')} →</Link>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground text-center py-4">{t('loading')}</p>
+            ) : !recentPetitions || recentPetitions.length === 0 ? (
+              <div className="text-center py-8 space-y-3">
+                <p className="text-2xl">📋</p>
+                <p className="text-sm font-medium">{t('no_petitions_yet')}</p>
+                <p className="text-xs text-muted-foreground">{t('no_petitions_yet_desc')}</p>
+                <Link to="/submit" className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline">
+                  {t('submit_first_petition')}
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentPetitions.map(pet => (
+                  <div key={pet.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors border border-transparent hover:border-muted-foreground/10 group">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center text-lg shadow-sm group-hover:scale-110 transition-transform">
+                        {pet.category ? (DEPT_ICONS[pet.category] || '📋') : '📋'}
                       </div>
-                      <p className="text-xs text-muted-foreground">{String(pet.id).slice(0, 8)}... · {pet.citizen_name || 'Anonymous'}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">{t('dept_' + pet.category)}</span>
+                          <span className="text-[10px] text-muted-foreground/30">•</span>
+                          <span className="text-[10px] text-muted-foreground font-medium">{new Date(pet.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-sm font-bold truncate group-hover:text-primary transition-colors">{pet.title}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-2 px-2 sm:px-0">
+                      <Badge className="font-bold text-[10px] uppercase tracking-tighter" variant={pet.status === 'resolved' ? 'default' : pet.status === 'escalated' ? 'destructive' : 'secondary'}>
+                        {t('status_' + pet.status) || pet.status}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-2 px-2 sm:px-0">
-                    <Badge variant={pet.status === 'resolved' ? 'default' : pet.status === 'escalated' ? 'destructive' : 'secondary'}>
-                      {t('status_' + pet.status) || pet.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Leaderboard */}
+        <Card className="border-primary/10 bg-primary/[0.01]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-heading flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-yellow-500" /> {t('leaderboard_title') || 'Civic Hero Leaderboard'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground text-center py-4">{t('loading')}</p>
+            ) : leaderboard.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Be the first to join the leaderboard!</p>
+            ) : (
+              <div className="space-y-4">
+                {leaderboard.map((hero, idx) => {
+                  const hBadge = getBadgeInfo(hero.points);
+                  const HBadgeIcon = hBadge.icon;
+                  return (
+                    <motion.div
+                      key={hero.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-muted-foreground/5 shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <div className={`w-8 h-8 rounded-full ${hBadge.color} flex items-center justify-center text-white text-[10px] font-bold`}>
+                            {idx + 1}
+                          </div>
+                          {idx < 3 && (
+                            <div className="absolute -top-1 -right-1">
+                              <span className="text-xs">
+                                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold leading-none mb-1">{hero.name}</p>
+                          <div className="flex items-center gap-1">
+                            <HBadgeIcon className={`w-3 h-3 ${hBadge.color.replace('bg-', 'text-')}`} />
+                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">{hBadge.label}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-primary leading-none">{hero.points}</p>
+                        <p className="text-[8px] uppercase font-bold text-muted-foreground">Pts</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
       
       {/* Trending Petitions */}
       <Card className="border-orange-500/20 shadow-orange-500/5">

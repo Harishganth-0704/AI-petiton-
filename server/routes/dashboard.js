@@ -31,6 +31,26 @@ router.get('/stats', requireAuth, async (req, res) => {
         const result = await query(statsQuery, params);
         const row = result.rows[0];
 
+        // Fetch 7-day trend
+        const trendParams = [...params];
+        let trendScope = scope;
+        if (trendScope === '') {
+            trendScope = 'WHERE created_at > NOW() - INTERVAL \'7 days\'';
+        } else {
+            trendScope += ' AND created_at > NOW() - INTERVAL \'7 days\'';
+        }
+
+        const trendQuery = `
+            SELECT 
+                DATE_TRUNC('day', created_at)::date as date,
+                COUNT(*)::int as count
+            FROM petitions
+            ${trendScope}
+            GROUP BY 1
+            ORDER BY 1 ASC
+        `;
+        const trendResult = await query(trendQuery, params);
+
         const total = row.total_petitions || 0;
         const resolved = row.resolved_petitions || 0;
         const rate = total > 0 ? (resolved / total) * 100 : 0;
@@ -40,7 +60,8 @@ router.get('/stats', requireAuth, async (req, res) => {
             total_petitions: total,
             resolved_petitions: resolved,
             resolution_rate: parseFloat(rate.toFixed(1)),
-            avg_sla_days: parseFloat(sla.toFixed(1))
+            avg_sla_days: parseFloat(sla.toFixed(1)),
+            trend: trendResult.rows
         });
     } catch (error) {
         console.error('Dashboard stats error:', error);
