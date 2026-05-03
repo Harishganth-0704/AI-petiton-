@@ -1,7 +1,13 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from the server root (two levels up from services/)
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 /**
  * Centralized service for sending emails
@@ -9,14 +15,20 @@ dotenv.config();
  */
 class EmailService {
     constructor() {
+        console.log(`[EmailService] Initializing with host: ${process.env.SMTP_HOST}, user: ${process.env.SMTP_USER}`);
+        
         this.transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-            port: process.env.SMTP_PORT || 587,
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: parseInt(process.env.SMTP_PORT || '587'),
             secure: process.env.SMTP_PORT === '465',
             auth: {
-                user: process.env.SMTP_USER || 'mock_user',
-                pass: process.env.SMTP_PASS || 'mock_pass',
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
             },
+            family: 4, // Force IPv4 to avoid ENETUNREACH on some cloud providers
+            tls: {
+                rejectUnauthorized: false
+            }
         });
 
         // Verify connection on startup
