@@ -9,7 +9,8 @@
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<any> {
     const token = localStorage.getItem('token');
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+    // If we're in production and have a relative URL, let the proxy handle it
+    const fullUrl = (url.startsWith('http') || baseUrl) ? `${baseUrl}${url}` : url;
 
     const headers: Record<string, string> = {
         ...(options.headers as Record<string, string> || {}),
@@ -35,6 +36,11 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     }
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    if (!res.ok) {
+        if (res.status === 405) {
+            throw new Error(`API Error (405): Method Not Allowed. This usually means VITE_API_BASE_URL is not configured correctly in your deployment.`);
+        }
+        throw new Error(data.message || `HTTP ${res.status}`);
+    }
     return data;
 }

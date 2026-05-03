@@ -130,7 +130,8 @@ export default function RegisterPage() {
         setServerError('');
         try {
             const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-            const response = await fetch(`${baseUrl}/api/register`, {
+            const url = baseUrl ? `${baseUrl}/api/register` : '/api/register';
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -163,7 +164,8 @@ export default function RegisterPage() {
         setServerError('');
         try {
             const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-            const response = await fetch(`${baseUrl}/api/verify-registration`, {
+            const url = baseUrl ? `${baseUrl}/api/verify-registration` : '/api/verify-registration';
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -188,7 +190,8 @@ export default function RegisterPage() {
         setServerError('');
         try {
             const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-            const response = await fetch(`${baseUrl}/api/resend-registration-otp`, {
+            const url = baseUrl ? `${baseUrl}/api/resend-registration-otp` : '/api/resend-registration-otp';
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
