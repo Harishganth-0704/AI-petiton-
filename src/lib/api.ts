@@ -8,9 +8,9 @@
  */
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<any> {
     const token = localStorage.getItem('token');
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    // If we're in production and have a relative URL, let the proxy handle it
-    const fullUrl = (url.startsWith('http') || baseUrl) ? `${baseUrl}${url}` : url;
+    // Priority: Env Var > Hardcoded Render Backend > Relative Path (for Proxy)
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://ai-petiton.onrender.com';
+    const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
 
     const headers: Record<string, string> = {
         ...(options.headers as Record<string, string> || {}),

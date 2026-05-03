@@ -140,7 +140,7 @@ class EmailService {
                 labelStatus: 'स्थिति',
                 confFooter: 'हमारी टीम आपके अनुरोध की समीक्षा करने पर आपको ईमेल के माध्यम से और अपडेट प्राप्त होंगे।',
                 confNote: 'हमारे समुदाय को बेहतर बनाने में आपकी सक्रिय भागीदारी के लिए धन्यवाद।',
-                statusSubject: 'स्थिति अपडेट: {{title}}',
+                statusSubject: 'status अपडेट: {{title}}',
                 statusUpdate: 'आपकी याचिका की स्थिति पर एक अपडेट है।',
                 labelNewStatus: 'नई स्थिति',
                 labelRemark: 'अधिकारी की टिप्पणी',
