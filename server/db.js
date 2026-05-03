@@ -3,16 +3,21 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const dbConfig = {
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'petition_hub',
-  password: process.env.DB_PASSWORD || 'password',
-  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432,
-};
+const dbConfig = process.env.DATABASE_URL 
+  ? { 
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    }
+  : {
+      user: process.env.DB_USER || 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'petition_hub',
+      password: process.env.DB_PASSWORD || 'password',
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432,
+    };
 
 // Supabase and most cloud providers require SSL
-if (process.env.DB_HOST && (process.env.DB_HOST.includes('supabase') || process.env.DB_HOST.includes('pooler'))) {
+if (!process.env.DATABASE_URL && process.env.DB_HOST && (process.env.DB_HOST.includes('supabase') || process.env.DB_HOST.includes('pooler'))) {
   dbConfig.ssl = { rejectUnauthorized: false };
 }
 
