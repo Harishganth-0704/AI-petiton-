@@ -1,7 +1,7 @@
 // Mock data and types for the petition system
 
-export type PetitionStatus = 'submitted' | 'ai_processing' | 'verification' | 'assigned' | 'in_progress' | 'resolved' | 'escalated';
-export type Department = 'water' | 'road' | 'electricity' | 'sanitation' | 'healthcare';
+export type PetitionStatus = 'submitted' | 'ai_processing' | 'verification' | 'assigned' | 'in_progress' | 'resolved' | 'escalated' | 'appealed';
+export type Department = 'water' | 'road' | 'electricity' | 'sanitation' | 'healthcare' | 'corruption' | 'delay_in_service' | 'harassment' | 'service_standards';
 export type UrgencyLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export interface Petition {
@@ -26,11 +26,13 @@ export interface AIAnalysis {
   departmentPrediction: Department;
   departmentConfidence: number;
   urgencyScore: number;
+  trustScore?: number; // 0-100 logic score
   duplicateProbability: number;
   fakeProbability: number;
   keywords: string[];
   sentiment: 'negative' | 'neutral' | 'positive';
   steps?: Array<{ name: string; passed: boolean; detail: string }>;
+  reason?: string;
 }
 
 export interface DashboardStats {
@@ -48,6 +50,10 @@ export const DEPARTMENT_LABELS: Record<Department, string> = {
   electricity: 'Electricity',
   sanitation: 'Sanitation',
   healthcare: 'Healthcare',
+  corruption: 'Anti-Corruption',
+  delay_in_service: 'Delay in Service',
+  harassment: 'Harassment / Abuse',
+  service_standards: 'Non-compliance of Standards',
 };
 
 export const DEPARTMENT_ICONS: Record<Department, string> = {
@@ -56,6 +62,10 @@ export const DEPARTMENT_ICONS: Record<Department, string> = {
   electricity: '⚡',
   sanitation: '🧹',
   healthcare: '🏥',
+  corruption: '⚖️',
+  delay_in_service: '⏳',
+  harassment: '🛑',
+  service_standards: '📜',
 };
 
 export const STATUS_LABELS: Record<PetitionStatus, string> = {
@@ -66,6 +76,7 @@ export const STATUS_LABELS: Record<PetitionStatus, string> = {
   in_progress: 'In Progress',
   resolved: 'Resolved',
   escalated: 'Escalated',
+  appealed: 'Appealed',
 };
 
 export const URGENCY_COLORS: Record<UrgencyLevel, string> = {
@@ -90,6 +101,10 @@ export const MOCK_STATS: DashboardStats = {
     electricity: 0,
     sanitation: 0,
     healthcare: 0,
+    corruption: 0,
+    delay_in_service: 0,
+    harassment: 0,
+    service_standards: 0,
   },
 };
 
@@ -129,11 +144,32 @@ export function simulateAIAnalysis(text: string, userCategory?: string): AIAnaly
       { term: 'மருத்துவமனை', weight: 2 }, { term: 'உடல்நலம்', weight: 2 }, { term: 'clinic', weight: 1.5 },
       { term: 'health', weight: 1 }, { term: 'disease', weight: 1.5 }, { term: 'ambulance', weight: 2 }
     ],
+    corruption: [
+      { term: 'bribe', weight: 2 }, { term: 'corruption', weight: 2 }, { term: 'money', weight: 1 },
+      { term: 'ஊழல்', weight: 2 }, { term: 'லஞ்சம்', weight: 2 }, { term: 'agent', weight: 1.2 },
+      { term: 'illegal', weight: 1.5 }, { term: 'favour', weight: 1.2 }
+    ],
+    delay_in_service: [
+      { term: 'delay', weight: 2 }, { term: 'slow', weight: 1.5 }, { term: 'pending', weight: 1.5 },
+      { term: 'தாமதம்', weight: 2 }, { term: 'waiting', weight: 1.2 }, { term: 'time', weight: 0.8 },
+      { term: 'days', weight: 1 }, { term: 'weeks', weight: 1.2 }, { term: 'not yet', weight: 1.5 }
+    ],
+    harassment: [
+      { term: 'harassment', weight: 2 }, { term: 'abuse', weight: 2 }, { term: 'misbehave', weight: 1.5 },
+      { term: 'துன்புறுத்தல்', weight: 2 }, { term: 'threat', weight: 1.5 }, { term: 'rude', weight: 1.2 },
+      { term: 'shouting', weight: 1.2 }, { term: 'scared', weight: 1.5 }
+    ],
+    service_standards: [
+      { term: 'not following', weight: 1.5 }, { term: 'rules', weight: 1.5 }, { term: 'standard', weight: 1.5 },
+      { term: 'முறைக்கேடு', weight: 2 }, { term: 'policy', weight: 1.2 }, { term: 'violation', weight: 2 },
+      { term: 'quality', weight: 1.2 }, { term: 'denied', weight: 1.5 }
+    ],
   };
 
   // 2. Score Calculation
   const scores: Record<Department, number> = {
-    water: 0, road: 0, electricity: 0, sanitation: 0, healthcare: 0
+    water: 0, road: 0, electricity: 0, sanitation: 0, healthcare: 0,
+    corruption: 0, delay_in_service: 0, harassment: 0, service_standards: 0
   };
 
   Object.entries(CATEGORY_WEIGHTS).forEach(([dept, keywords]) => {
@@ -194,19 +230,25 @@ export function simulateAIAnalysis(text: string, userCategory?: string): AIAnaly
   // 7. Keyword Extraction (most weighted terms)
   const detectedKeywords = words.filter(w => w.length > 3).slice(0, 5);
 
+  const trustScore = Math.max(0, 100 - (fakeProb * 100));
+
+  const hasHumanFlag = fakeProb > 0.6; // If it's heavily flagged as fake, assume human/selfie for demo
+
   return {
     departmentPrediction: predictedDept,
     departmentConfidence: Math.round(confidence * 100) / 100,
     urgencyScore: Math.round(urgency * 100) / 100,
+    trustScore: Math.round(trustScore),
     duplicateProbability: Math.round(Math.random() * 0.15 * 100) / 100, // Still random for demo
     fakeProbability: Math.round(fakeProb * 100) / 100,
     keywords: detectedKeywords,
     sentiment: urgency > 0.6 ? 'negative' : 'neutral',
+    reason: hasHumanFlag ? "Forensic Rejection: Unrelated content (Mock Mode)." : "FALLBACK SECURITY: AI audit encountered an error. Trust degraded for safety.",
     steps: [
-      { name: "Spam Check", passed: fakeProb < 0.4, detail: fakeProb < 0.4 ? "Passed: Content appears natural." : "Failed: Potential nonsense detected." },
-      { name: "Civic Relevance", passed: primaryMatch[1] > 0, detail: primaryMatch[1] > 0 ? `Detected link to ${predictedDept} department.` : "Failed: Issue does not appear civic-related." },
-      { name: "Duplicate Detection", passed: true, detail: "Passed: No identical matches in cache." },
-      { name: "Final Assessment", passed: fakeProb < 0.5, detail: fakeProb < 0.5 ? "Passed: Petition verified." : "Failed: High suspicious score." }
+      { name: "📍 Location Match", passed: true, detail: "Coordinates within municipal limits." },
+      { name: "📸 Vision Scan", passed: !hasHumanFlag, detail: hasHumanFlag ? "FAILED: Irrelevant visual content." : "Basic vision scan passed." },
+      { name: "🔁 Conflict Check", passed: true, detail: "No similar reports found nearby." },
+      { name: "👤 Citizen History", passed: fakeProb < 0.4, detail: fakeProb >= 0.4 ? "Suspicious patterns detected." : "User appears legitimate." }
     ]
   };
 }
@@ -240,6 +282,26 @@ export function generateSmartReplies(category: string): string[] {
       "Medical camp arranged in your area on Sunday.",
       "Ambulance availability issue documented and escalated.",
       "Noted. Extra doctor assigned to the PHC temporarily.",
+    ],
+    corruption: [
+      "Vigilance department has been notified of this report.",
+      "Internal inquiry initiated. Details requested via email.",
+      "Zero tolerance policy initiated for this case.",
+    ],
+    delay_in_service: [
+      "Apologies for the delay. We are expediting your request.",
+      "Technical backlog being cleared. Target completion: 48h.",
+      "Case prioritised. Officer assigned for immediate action.",
+    ],
+    harassment: [
+      "Safety is our priority. This case is handled by high-level committee.",
+      "Action initiated against the reported personnel.",
+      "Confidential investigation in progress. We will contact you.",
+    ],
+    service_standards: [
+      "Service audit scheduled for this specific request.",
+      "Correction plan initiated to meet required standards.",
+      "Staff retraining initiated based on your report.",
     ],
   };
 

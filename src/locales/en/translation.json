@@ -29,6 +29,11 @@
         "status_in_progress": "In Progress",
         "status_resolved": "Resolved",
         "logout": "Logout",
-        "no_petitions": "No petitions found."
+        "no_petitions": "No petitions found.",
+        "trust_score_label": "Authenticity Trust Score",
+        "step_by_step_analysis": "AI Verification Protocol",
+        "trust_accepted": "Submission Accepted",
+        "trust_pending": "Verification Pending",
+        "trust_rejected": "Auto-Rejected"
     }
 }

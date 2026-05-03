@@ -1,5 +1,5 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "ai-petition-hub",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -45,6 +45,8 @@
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-query": "^5.83.0",
+    "@tensorflow-models/coco-ssd": "^2.2.3",
+    "@tensorflow/tfjs": "^4.22.0",
     "@types/leaflet": "^1.9.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -93,7 +95,6 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "jsdom": "^20.0.3",
-    "lovable-tagger": "^1.1.13",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",

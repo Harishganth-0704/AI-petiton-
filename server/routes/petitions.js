@@ -334,14 +334,34 @@ router.get('/map', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/petitions/analyze ──────────────────────────────────────────────
-router.post('/analyze', requireAuth, async (req, res) => {
+router.post('/analyze', async (req, res) => {
     try {
-        const { title, description, category, location } = req.body;
+        const { title, description, category, location, isSimulatedFake, ml_findings } = req.body;
         if (!title || !description) {
             return res.status(400).json({ message: 'title and description are required' });
         }
 
-        const aiResult = await aiService.analyzePetition(title, description, category, location);
+        // 🗺️ Fetch nearby petitions for geo-context
+        let nearbyContext = [];
+        if (location?.lat && location?.lng) {
+            try {
+                const nearby = await query(`
+                    SELECT title, category, status, created_at
+                    FROM petitions
+                    WHERE 
+                        location_lat IS NOT NULL AND location_lng IS NOT NULL
+                        AND ABS(location_lat - $1) < 0.005
+                        AND ABS(location_lng - $2) < 0.005
+                    ORDER BY created_at DESC
+                    LIMIT 5
+                `, [location.lat, location.lng]);
+                nearbyContext = nearby.rows;
+            } catch (geoErr) {
+                console.warn('[ANALYZE] Geo-context fetch failed (non-critical):', geoErr.message);
+            }
+        }
+
+        const aiResult = await aiService.analyzePetition(title, description, category, location, null, nearbyContext, isSimulatedFake, ml_findings);
         res.json(aiResult);
     } catch (error) {
         console.error('AI Analysis Route Error:', error);
@@ -375,36 +395,64 @@ router.post('/', requireAuth, requireRole('citizen'), strictLimiter, upload.fiel
         );
         const departmentId = deptResult.rows[0]?.id || null;
 
-        // Run Server-side AI Analysis
-        const mediaPath = req.files?.media ? req.files.media[0].path : null;
-        const aiResult = await aiService.analyzePetition(title, description, category, location, mediaPath);
+        // 🗺️ Fetch nearby petitions for geo-context
+        let nearbyContext = [];
+        if (location?.lat && location?.lng) {
+            try {
+                const nearby = await query(`
+                    SELECT title, category, status, created_at
+                    FROM petitions
+                    WHERE 
+                        location_lat IS NOT NULL AND location_lng IS NOT NULL
+                        AND ABS(location_lat - $1) < 0.005
+                        AND ABS(location_lng - $2) < 0.005
+                    ORDER BY created_at DESC
+                    LIMIT 5
+                `, [location.lat, location.lng]);
+                nearbyContext = nearby.rows;
+                if (nearbyContext.length > 0) {
+                    console.log(`[SUBMIT] Found ${nearbyContext.length} nearby petitions for geo-context.`);
+                }
+            } catch (geoErr) {
+                console.warn('[SUBMIT] Geo-context fetch failed (non-critical):', geoErr.message);
+            }
+        }
 
-        // Dynamic Priority and Status based on AI Analysis
-        let priority = 'medium';
-        let initialStatus = 'submitted';
-        let officerRemark = null;
+        // Run Server-side AI Analysis with geo-context
+        const mediaPath = req.files?.media ? req.files.media[0].path : null;
+        const aiResult = await aiService.analyzePetition(title, description, category, location, mediaPath, nearbyContext);
+
+        // 🚀 Dynamic Status based on Trust Score (User Request Logic)
+        let initialStatus = 'submitted'; // Default for Score >= 70
         let isSpam = false;
+
+        const trustScore = aiResult.trustScore || 0;
+        if (trustScore >= 70) {
+            initialStatus = 'submitted'; // ✅ Accept
+        } else if (trustScore >= 40) {
+            initialStatus = 'pending';   // ⚠️ Pending
+        } else {
+            initialStatus = 'rejected';  // ❌ Reject
+            isSpam = true;
+        }
+
+        // Dynamic Priority based on AI Urgency
+        let priority = 'medium';
+        if (aiResult.urgencyScore > 0.8) priority = 'high';
+        else if (aiResult.urgencyScore < 0.4) priority = 'low';
 
         // Build a detailed step-by-step report for the officer/admin
         const stepReport = aiResult.steps.map(s => `${s.passed ? '✅' : '❌'} ${s.name}: ${s.detail}`).join('\n');
-        officerRemark = `AI Step-by-Step Analysis:\n${stepReport}\n\nFinal Conclusion: ${aiResult.reason}`;
+        let officerRemark = `AI trust Evaluation (Score: ${trustScore}/100):\n${stepReport}\n\nConclusion: ${aiResult.reason}`;
 
-        if (aiResult.fakeProbability > 50) {
-            initialStatus = 'rejected';
-            isSpam = true;
-        } else {
-            if (aiResult.urgencyScore > 0.8) priority = 'high';
-            else if (aiResult.urgencyScore < 0.4) priority = 'low';
-        }
-
-        console.log(`[SUBMIT] Data ready for DB. Officer Remark Length: ${officerRemark?.length}`);
+        console.log(`[SUBMIT] Data ready for DB. Trust Score: ${trustScore}, Status: ${initialStatus}`);
 
         try {
             const insertResult = await query(`
           INSERT INTO petitions 
             (title, description, category, status, priority, citizen_id, department_id,
              location_lat, location_lng, location_address, is_anonymous, media_url, audio_url,
-             ai_urgency, ai_fake_prob, ai_dept_prediction, ai_confidence, ai_keywords, officer_remark, ai_analysis_report, ai_summary, admin_reviewed)
+             ai_urgency, ai_fake_prob, trust_score, ai_dept_prediction, ai_confidence, officer_remark, ai_analysis_report, ai_summary, admin_reviewed)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, false)
           RETURNING id, title, status, created_at
         `, [
@@ -415,9 +463,9 @@ router.post('/', requireAuth, requireRole('citizen'), strictLimiter, upload.fiel
                 audioUrl,
                 aiAnalysis?.urgencyScore || 0,
                 aiResult.fakeProbability / 100,
+                trustScore,
                 aiAnalysis?.departmentPrediction || null,
                 1.0,
-                aiAnalysis?.keywords || [],
                 officerRemark,
                 JSON.stringify(aiResult.steps || []),
                 aiResult.summary || ''
@@ -446,8 +494,11 @@ router.post('/', requireAuth, requireRole('citizen'), strictLimiter, upload.fiel
             return res.status(500).json({ message: 'Database error while saving petition', error: dbErr.message });
         }
     } catch (error) {
-        console.error('Submit petition error:', error);
-        res.status(500).json({ message: error.message || 'Error submitting petition' });
+        console.error('Submit petition error [CRITICAL]:', error);
+        res.status(500).json({ 
+            message: error.message || 'Error submitting petition',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+        });
     }
 });
 

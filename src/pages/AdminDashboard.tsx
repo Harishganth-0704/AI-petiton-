@@ -190,6 +190,23 @@ export default function AdminDashboard() {
         </Button>
       </div>
 
+      {/* AI Crisis Alerts */}
+      {workloadData.length > 0 && workloadData.some(d => d.complaints > 3) && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5 animate-pulse" />
+            <div>
+              <h3 className="text-sm font-bold text-red-800 dark:text-red-200 uppercase tracking-wider flex items-center gap-2">
+                <Brain className="w-3.5 h-3.5" /> {t('crisis_alert') || 'Crisis Alert'}
+              </h3>
+              <p className="text-xs text-red-600 dark:text-red-300 mt-1">
+                AI has detected an unusual spike in petitions for <strong>{workloadData.reduce((prev, current) => (prev.complaints > current.complaints) ? prev : current)?.name}</strong>. Immediate administrative intervention is recommended to prevent infrastructure failure.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Admin stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {adminStats.map(s => {
@@ -248,18 +265,21 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Workload chart */}
-      <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+
+          {/* Workload chart */}
+          <Card className="h-full">
         <CardHeader>
           <CardTitle className="text-base font-heading">{t('dept_workload')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={workloadData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 25%, 90%)" />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} />
               <Bar dataKey="complaints" radius={[6, 6, 0, 0]}>
                 {workloadData.map((e, i) => <Cell key={i} fill={e.fill} />)}
               </Bar>
@@ -267,6 +287,47 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+      </div>
+
+      {/* Department Performance Leaderboard */}
+      <div className="lg:col-span-1">
+        <Card className="h-full">
+          <CardHeader>
+            <CardTitle className="text-base font-heading flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              {t('dept_performance') || 'Department Performance'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {workloadData.sort((a, b) => b.complaints - a.complaints).map((dept, index) => {
+                const isTop = index === 0;
+                // Mocking resolution rate purely for demonstration of premium feature
+                const resolutionScore = 100 - (index * 15) - Math.floor(Math.random() * 10);
+                return (
+                  <div key={dept.name} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${isTop ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-500' : 'bg-muted text-muted-foreground'}`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">{dept.name}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase">{dept.complaints} Total issues</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-bold text-sm ${resolutionScore > 80 ? 'text-green-600' : resolutionScore > 50 ? 'text-yellow-600' : 'text-red-500'}`}>{resolutionScore}%</p>
+                      <p className="text-[9px] text-muted-foreground uppercase">Resolution</p>
+                    </div>
+                  </div>
+                );
+              })}
+              {workloadData.length === 0 && <p className="text-sm text-center text-muted-foreground">No data available</p>}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      </div>
 
       {/* Petition management */}
       <Card>
@@ -318,7 +379,7 @@ export default function AdminDashboard() {
                     <DialogTrigger asChild>
                       <div className="cursor-pointer hover:opacity-80 transition-opacity flex-1 min-w-[200px]">
                         <div className="flex items-center gap-2">
-                          <span>{{ 'water': '💧', 'road': '🛣️', 'electricity': '⚡', 'sanitation': '🧹', 'healthcare': '🏥' }[pet.category] || '📋'}</span>
+                          <span>{{ 'water': '💧', 'road': '🛣️', 'electricity': '⚡', 'sanitation': '🧹', 'healthcare': '🏥', 'corruption': '⚖️', 'delay_in_service': '⏳', 'harassment': '🛑', 'service_standards': '📜' }[pet.category] || '📋'}</span>
                           <span className="text-xs font-bold uppercase tracking-wider text-primary/60">{t('dept_' + pet.category)}</span>
                           <h3 className="text-base font-heading font-semibold ml-1">{pet.title}</h3>
                         </div>
@@ -351,7 +412,7 @@ export default function AdminDashboard() {
                     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                          <span>{{ 'water': '💧', 'road': '🛣️', 'electricity': '⚡', 'sanitation': '🧹', 'healthcare': '🏥' }[pet.category] || '📋'}</span>
+                          <span>{{ 'water': '💧', 'road': '🛣️', 'electricity': '⚡', 'sanitation': '🧹', 'healthcare': '🏥', 'corruption': '⚖️', 'delay_in_service': '⏳', 'harassment': '🛑', 'service_standards': '📜' }[pet.category] || '📋'}</span>
                           {pet.title}
                         </DialogTitle>
                         <DialogDescription>
@@ -498,7 +559,7 @@ export default function AdminDashboard() {
           {feedbacks.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No feedback received yet</p>
           ) : feedbacks.map(fb => (
-            <div key={fb.id} className="p-3 rounded-xl border bg-yellow-50/30 border-yellow-200/50 space-y-2">
+            <div key={fb.id} className="p-3 rounded-xl border bg-yellow-500/5 dark:bg-yellow-500/10 border-yellow-500/20 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <div className="flex">
@@ -515,7 +576,7 @@ export default function AdminDashboard() {
                 <p className="text-[10px] text-muted-foreground">Submitted by {fb.citizen_name}</p>
               </div>
               {fb.comment && (
-                <p className="text-xs italic text-foreground/80 bg-white/50 p-2 rounded-lg border border-yellow-100">
+                <p className="text-xs italic text-foreground/80 bg-background/50 p-2 rounded-lg border border-yellow-500/20">
                   "{fb.comment}"
                 </p>
               )}

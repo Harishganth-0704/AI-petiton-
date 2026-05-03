@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
@@ -16,6 +17,7 @@ import { AIAnalysisReport } from '@/components/AIAnalysisReport';
 
 const DEPT_ICONS: Record<string, string> = {
     water: '💧', road: '🛣️', electricity: '⚡', sanitation: '🧹', healthcare: '🏥',
+    corruption: '⚖️', delay_in_service: '⏳', harassment: '🛑', service_standards: '📜',
 };
 
 export default function OfficerDashboard() {
@@ -34,6 +36,8 @@ export default function OfficerDashboard() {
         { value: 'resolved', label: t('status_resolved') },
         { value: 'rejected', label: t('status_rejected') },
         { value: 'escalated', label: t('status_escalated') },
+        { value: 'appealed', label: t('status_appealed') },
+        { value: 'forwarded', label: t('forward_dept_btn') || 'Forward to Dept' },
     ];
 
     useEffect(() => {
@@ -104,7 +108,7 @@ export default function OfficerDashboard() {
 
     const stats = {
         total: petitions.length,
-        pending: petitions.filter(p => ['submitted', 'pending', 'in_progress'].includes(p.status)).length,
+        pending: petitions.filter(p => ['submitted', 'pending', 'in_progress', 'appealed'].includes(p.status)).length,
         resolved: petitions.filter(p => p.status === 'resolved').length,
         escalated: petitions.filter(p => p.status === 'escalated').length,
     };
@@ -216,6 +220,21 @@ export default function OfficerDashboard() {
                                     </div>
                                 )}
 
+                                {/* Premium Gov Features: AI Sentiment & Summary */}
+                                <div className="space-y-2 mt-2">
+                                    <div className="flex gap-2">
+                                      <Badge variant="outline" className={`bg-background/80 flex items-center gap-1 ${pet.ai_urgency > 0.6 ? 'border-red-500/50 text-red-600' : 'border-blue-500/50 text-blue-600'}`}>
+                                          <Brain className="w-3 h-3" /> {t('sentiment_label') || 'Sentiment'}: {pet.ai_urgency > 0.6 ? 'Frustrated/Urgent' : 'Neutral/Formal'}
+                                      </Badge>
+                                    </div>
+                                    {pet.ai_summary && (
+                                      <div className="text-xs bg-primary/5 p-2 rounded-md border border-primary/20 italic text-primary">
+                                          <span className="font-bold mr-1">{t('ai_summary') || 'AI Summary'}:</span>
+                                          "{pet.ai_summary}"
+                                      </div>
+                                    )}
+                                </div>
+
                                 {/* AI Analysis */}
                                 <div className="p-4 rounded-xl border-2 border-primary/10 bg-primary/5">
                                     <AIAnalysisReport
@@ -248,7 +267,7 @@ export default function OfficerDashboard() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-7 text-[10px] font-bold uppercase tracking-widest gap-1 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                            className="h-7 text-[10px] font-bold uppercase tracking-widest gap-1 border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
                                             onClick={() => handleSuggestReply(pet.id)}
                                             disabled={isSuggesting === pet.id}
                                         >
@@ -260,7 +279,7 @@ export default function OfficerDashboard() {
                                             <button
                                                 key={idx}
                                                 type="button"
-                                                className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded-full cursor-pointer transition-colors whitespace-nowrap"
+                                                className="text-xs bg-blue-500/10 dark:bg-blue-500/20 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 px-2 py-1 rounded-full cursor-pointer transition-colors whitespace-nowrap"
                                                 onClick={() => updateField(pet.id, '_remark', reply)}
                                             >
                                                 {reply}
@@ -304,6 +323,29 @@ export default function OfficerDashboard() {
                                             }
                                         </Button>
                                     </div>
+
+                                    {/* PG Portal Features: Forward / ATR */}
+                                    {pet._newStatus === 'resolved' && (
+                                        <div className="flex items-center gap-2 mt-2 w-full bg-green-500/5 p-2 rounded-lg border border-green-500/20">
+                                            <Input type="file" accept=".pdf,.png,.jpg" className="text-xs h-8 max-w-[250px] bg-background" />
+                                            <span className="text-xs font-semibold text-green-700 dark:text-green-400 whitespace-nowrap">{t('upload_atr_lbl') || 'Upload ATR (Action Taken Report)'}</span>
+                                        </div>
+                                    )}
+                                    {pet._newStatus === 'forwarded' && (
+                                        <div className="flex items-center gap-2 mt-2 w-full bg-orange-500/5 p-2 rounded-lg border border-orange-500/20">
+                                            <Select onValueChange={(val) => updateField(pet.id, '_remark', `[FORWARDED TO ${val}] ${pet._remark || ''}`)}>
+                                                <SelectTrigger className="text-xs h-8 w-[200px] bg-background border-orange-500/30">
+                                                    <SelectValue placeholder="Select Target Department..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {Object.keys(DEPT_ICONS).map(d => (
+                                                        <SelectItem key={d} value={d} className="text-xs uppercase">{t('dept_' + d)}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">Reassigning via Central Registry</span>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         ))

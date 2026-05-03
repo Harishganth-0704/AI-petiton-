@@ -7,9 +7,9 @@ import { DEPARTMENT_ICONS } from '@/lib/mock-data';
 import { apiFetch } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { FileText, CheckCircle, Clock, AlertTriangle, Star, Award, Trophy, TrendingUp, Eye, MessageSquare, ThumbsUp } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertTriangle, Star, Award, Trophy, TrendingUp, Eye, MessageSquare, ThumbsUp, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { AnimatedCounter } from '@/components/ui/animated-counter';
 
 const CHART_COLORS = ['#2563eb', '#0891b2', '#f59e0b', '#10b981', '#ef4444'];
@@ -25,11 +25,24 @@ const STATUS_LABEL_MAP: Record<string, string> = {
 };
 
 const DEPT_ICONS: Record<string, string> = {
-  water: '💧',
+  healthcare: '🏥',
+  corruption: '⚖️',
+  delay_in_service: '⏳',
+  harassment: '🛑',
+  service_standards: '📜',
   road: '🛣️',
+  water: '💧',
   electricity: '⚡',
   sanitation: '🧹',
-  healthcare: '🏥',
+};
+
+const calculateSLADays = (createdAt: string) => {
+  const created = new Date(createdAt);
+  const target = new Date(created);
+  target.setDate(target.getDate() + 30);
+  const now = new Date();
+  const diffTime = target.getTime() - now.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
 export default function DashboardPage() {
@@ -46,6 +59,7 @@ export default function DashboardPage() {
   const [recentPetitions, setRecentPetitions] = useState<any[]>([]);
   const [trendingPetitions, setTrendingPetitions] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [ageingStats, setAgeingStats] = useState({ days0_30: 0, days30_60: 0, days60_plus: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,6 +77,19 @@ export default function DashboardPage() {
         setRecentPetitions(all.slice(0, 5));
         setTrendingPetitions(trending);
         setLeaderboard(topUsers || []);
+
+        // Calculate Ageing Analysis
+        const now = new Date();
+        const ageing = { days0_30: 0, days30_60: 0, days60_plus: 0 };
+        all.forEach((p: any) => {
+          if (p.status === 'resolved' || p.status === 'rejected') return;
+          const created = new Date(p.created_at);
+          const diffDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays <= 30) ageing.days0_30++;
+          else if (diffDays <= 60) ageing.days30_60++;
+          else ageing.days60_plus++;
+        });
+        setAgeingStats(ageing);
       } catch (err) {
         console.error('Dashboard fetch error:', err);
       } finally {
@@ -110,9 +137,9 @@ export default function DashboardPage() {
 
         {user?.role === 'citizen' && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-            <Card className="bg-primary/5 border-primary/20 shadow-none">
+            <Card className="glass-card bg-primary/5 border-primary/20 shadow-none">
               <CardContent className="p-3 flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-full ${badge.color} flex items-center justify-center text-white shadow-lg`}>
+                <div className={`w-12 h-12 rounded-full ${badge.color} flex items-center justify-center text-white shadow-lg animate-float`}>
                   <BadgeIcon className="w-6 h-6" />
                 </div>
                 <div>
@@ -135,9 +162,9 @@ export default function DashboardPage() {
           const Icon = s.icon;
           return (
             <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              <Card>
+              <Card className="glass-card hover:scale-105 transition-transform duration-300">
                 <CardContent className="flex items-center gap-4 p-5">
-                  <div className={`w-10 h-10 rounded-xl bg-muted flex items-center justify-center ${s.color}`}>
+                  <div className={`w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ${s.color}`}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
@@ -242,6 +269,44 @@ export default function DashboardPage() {
           </Card>
       )}
 
+      {/* Ageing Analysis - Professional Accountability */}
+      <Card className="border-primary/20 bg-primary/[0.02]">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-heading flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-primary" /> {t('ageing_analysis')}
+            </div>
+            <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary">Live Transparency</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 py-2">
+            {[
+              { label: t('days_0_30'), count: ageingStats.days0_30, color: 'bg-green-500', percent: (ageingStats.days0_30 / Math.max(1, ageingStats.days0_30 + ageingStats.days30_60 + ageingStats.days60_plus)) * 100 },
+              { label: t('days_30_60'), count: ageingStats.days30_60, color: 'bg-orange-500', percent: (ageingStats.days30_60 / Math.max(1, ageingStats.days0_30 + ageingStats.days30_60 + ageingStats.days60_plus)) * 100 },
+              { label: t('days_60_plus'), count: ageingStats.days60_plus, color: 'bg-red-600', percent: (ageingStats.days60_plus / Math.max(1, ageingStats.days0_30 + ageingStats.days30_60 + ageingStats.days60_plus)) * 100 },
+            ].map((item, idx) => (
+              <div key={idx} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span>{item.label}</span>
+                  <span className="text-muted-foreground">{item.count} {t('total_petitions')}</span>
+                </div>
+                <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex">
+                   <motion.div 
+                     initial={{ width: 0 }} 
+                     animate={{ width: `${item.percent}%` }}
+                     className={`h-full ${item.color}`}
+                   />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-4 italic">
+            * These statistics represent the current pending workload of government departments.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Recently Submitted and Leaderboard */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Recent petitions */}
@@ -251,6 +316,15 @@ export default function DashboardPage() {
             <Link to="/track" className="text-[10px] text-primary hover:underline uppercase tracking-widest font-bold font-heading">{t('nav_track')} →</Link>
           </CardHeader>
           <CardContent>
+            <div className="flex items-center gap-3 mb-4 p-2 bg-primary/5 rounded-lg border border-primary/10">
+               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-primary" />
+               </div>
+               <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">{t('public_accountability')}</p>
+                  <p className="text-[10px] text-muted-foreground">Official redressal goal: 30 days per petition</p>
+               </div>
+            </div>
             {loading ? (
               <p className="text-sm text-muted-foreground text-center py-4">{t('loading')}</p>
             ) : !recentPetitions || recentPetitions.length === 0 ? (
@@ -263,9 +337,27 @@ export default function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-3">
+              <motion.div 
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: { 
+                    opacity: 1,
+                    transition: { staggerChildren: 0.1 }
+                  }
+                }}
+                className="space-y-3"
+              >
                 {recentPetitions.map(pet => (
-                  <div key={pet.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors border border-transparent hover:border-muted-foreground/10 group">
+                  <motion.div 
+                    key={pet.id}
+                    variants={{
+                      hidden: { opacity: 0, x: -20 },
+                      visible: { opacity: 1, x: 0 }
+                    }}
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors border border-transparent hover:border-muted-foreground/10 group"
+                  >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center text-lg shadow-sm group-hover:scale-110 transition-transform">
                         {pet.category ? (DEPT_ICONS[pet.category] || '📋') : '📋'}
@@ -280,13 +372,30 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-2 px-2 sm:px-0">
-                      <Badge className="font-bold text-[10px] uppercase tracking-tighter" variant={pet.status === 'resolved' ? 'default' : pet.status === 'escalated' ? 'destructive' : 'secondary'}>
-                        {t('status_' + pet.status) || pet.status}
-                      </Badge>
-                    </div>
-                  </div>
+                        <Badge className="font-bold text-[10px] uppercase tracking-tighter" variant={pet.status === 'resolved' ? 'default' : pet.status === 'escalated' ? 'destructive' : 'secondary'}>
+                          {t('status_' + pet.status) || pet.status}
+                        </Badge>
+                        {pet.status !== 'resolved' && (
+                          <div className="flex items-center gap-1.5 ml-1">
+                            {(() => {
+                              const days = calculateSLADays(pet.created_at);
+                              const isBreached = days <= 0;
+                              return (
+                                <Badge variant="outline" className={`text-[9px] font-black border-none px-1.5 py-0.5 ${
+                                  isBreached ? 'bg-red-500/10 text-red-600' : 
+                                  days < 7 ? 'bg-orange-500/10 text-orange-600' : 
+                                  'bg-green-500/10 text-green-600'
+                                }`}>
+                                  {isBreached ? t('sla_breached') : t('days_left', { days })}
+                                </Badge>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </CardContent>
         </Card>

@@ -114,7 +114,8 @@ export default function GrievanceChatbot() {
     try {
       const history = newMessages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
       
-      const res = await fetch('/api/chatbot', {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const res = await fetch(`${baseUrl}/api/chatbot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -12,6 +12,8 @@ import { FileText, Globe, Eye, EyeOff, Mail, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import PageTransition from '@/components/PageTransition';
 
 const registerSchema = z.object({
     fullName: z.string().min(2, 'Name must be at least 2 characters'),
@@ -127,7 +129,8 @@ export default function RegisterPage() {
         setIsSubmitting(true);
         setServerError('');
         try {
-            const response = await fetch('/api/register', {
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+            const response = await fetch(`${baseUrl}/api/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -159,7 +162,8 @@ export default function RegisterPage() {
         setIsSubmitting(true);
         setServerError('');
         try {
-            const response = await fetch('/api/verify-registration', {
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+            const response = await fetch(`${baseUrl}/api/verify-registration`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -183,7 +187,8 @@ export default function RegisterPage() {
         setIsSubmitting(true);
         setServerError('');
         try {
-            const response = await fetch('/api/resend-registration-otp', {
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+            const response = await fetch(`${baseUrl}/api/resend-registration-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -210,15 +215,11 @@ export default function RegisterPage() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 gov-gradient-light relative">
-            <div className="absolute top-4 right-4 z-10">
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                <ThemeToggle variant="dark" />
                 <LanguageSwitcher variant="dark" />
             </div>
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="w-full max-w-md"
-            >
+            <PageTransition className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 rounded-2xl gov-gradient mx-auto flex items-center justify-center shadow-lg mb-4">
                         <FileText className="w-8 h-8 text-primary-foreground" />
@@ -400,7 +401,7 @@ export default function RegisterPage() {
                                 </div>
                                 {serverError && <p className="text-xs text-destructive text-center">{serverError}</p>}
                                 <Button onClick={handleVerifyOtp} className="w-full h-12" disabled={isSubmitting || otp.length !== 6 || countdown === 0}>
-                                    {isSubmitting ? t('verifying_loader', 'Verifying...') : t('verify_btn', 'Verify Account')}
+                                    {isSubmitting ? t('verifying_loader', 'Verifying...') : t('verify_email_btn', 'Verify Account')}
                                 </Button>
                                 
                                 <Button 
@@ -425,7 +426,7 @@ export default function RegisterPage() {
                         )}
                     </CardContent>
                 </Card>
-            </motion.div>
+            </PageTransition>
         </div>
     );
 }

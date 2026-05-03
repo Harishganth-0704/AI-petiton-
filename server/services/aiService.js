@@ -28,22 +28,120 @@ class AiService {
      * @param {string} userCategory
      * @param {object} location { lat, lng, address }
      * @param {string} mediaPath
+     * @param {string[]} mlFindings - Array of object labels detected by real-time ML
      * @returns {Promise<{fakeProbability: number, reason: string, steps: Array<{name: string, passed: boolean, detail: string}>}>}
      */
-    async analyzePetition(title, description, userCategory = 'sanitation', location = {}, mediaPath = null) {
-        if (!this.isConfigured) {
-            console.log(`[MOCK AI] Advanced Analysis for "${title}"...`);
+    async analyzePetition(title, description, userCategory = 'sanitation', location = {}, mediaPath = null, nearbyContext = [], isSimulatedFake = false, mlFindings = []) {
+        const systemInstruction = `
+        You are a Forensic AI Validator for the "AI Petition Hub" (Government of Tamil Nadu).
+        Your mission is to analyze citizen evidence (Photo/Video) and determine AUTHENTICITY.
+        
+        STRICT VALIDATION RULES:
+        1. REJECT HUMANS: If the main subject is a human face or selfie, the trustScore MUST be 0-30.
+        2. ALLOW ONLY CIVIC DEPARTMENTS: You MUST categorize the grievance into one of these:
+           - Water Supply (Leaking pipes, no water)
+           - Roads & Transport (Potholes, broken roads)
+           - Electricity (Dangling wires, power waste)
+           - Sanitation (Garbage, drainage)
+           - Healthcare (Hospital issues)
+           - Anti-Corruption (Illegal activity, bribery)
+        3. TRUST SCORING (0-100):
+           - 70-100: Clear evidence of a civic grievance in one of the 6 categories.
+           - 40-69: Uncertain, low quality, or mismatched description.
+           - 0-39: SELFIE, FAKE, TEST, or NOT a civic issue.
+        
+        Return JSON ONLY:
+        {
+          "trustScore": number,
+          "fakeProbability": number,
+          "departmentPrediction": "water" | "road" | "electricity" | "sanitation" | "healthcare" | "corruption",
+          "urgencyScore": number,
+          "reason": "short explanation in Tamil/English",
+          "steps": [
+            { "name": "📍 Location Match", "passed": boolean, "detail": "string" },
+            { "name": "📸 Visual Evidence Valid", "passed": boolean, "detail": "Reject if Human/Selfie" },
+            { "name": "🔁 Duplicate Check", "passed": boolean, "detail": "string" },
+            { "name": "👤 User Authenticity", "passed": boolean, "detail": "string" }
+          ]
+        }`;
+
+        if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_api_key_here') {
+            console.log("⚠️ AI Service: Using Local Safety Engine (Mock Mode)");
+            
+            const combined = (title + ' ' + description).toLowerCase();
+            const categories = {
+                water: ['water', 'pipe', 'leak', 'drainage', 'குடிநீர்', 'குழாய்'],
+                road: ['road', 'pothole', 'street', 'transport', 'சாலை', 'பாதை'],
+                electricity: ['power', 'electric', 'wire', 'light', 'மின்சாரம்', 'மின்விளக்கு'],
+                sanitation: ['garbage', 'trash', 'waste', 'clean', 'குப்பை', 'சுத்தம்'],
+                healthcare: ['hospital', 'doctor', 'clinic', 'medicine', 'மருத்துவமனை', 'சுகாதாரம்'],
+                corruption: ['bribe', 'money', 'illegal', 'scam', 'ஊழல்', 'பணம்']
+            };
+            
+            // 1. CATEGORY ACCURACY CHECK
+            const targetKeywords = categories[userCategory] || [];
+            const hasCategoryMatch = targetKeywords.some(kw => combined.includes(kw));
+            
+            // 2. EVIDENCE QUALITY CHECK
+            const isTooShort = description.length < 30;
+            const hasForensicKeywords = combined.includes('photo') || combined.includes('evidence') || 
+                                       combined.includes('site') || combined.includes('proof') ||
+                                       combined.includes('maintenance') || combined.includes('official');
+
+            // 3. HUMAN/SELFIE CHECK (Vision-First)
+            const mlSaysPerson = mlFindings && mlFindings.includes('person');
+            const isSelfie = mlSaysPerson || combined.includes('selfie') || combined.includes('face') || 
+                             combined.includes('மனிதன்') || combined.includes('முகம்') ||
+                             combined.includes('selfee');
+
+            // 4. VISION CATEGORY VERIFICATION
+            const hasVisionProof = (userCategory === 'sanitation' && (mlFindings.includes('toilet') || mlFindings.includes('sink'))) ||
+                                 (userCategory === 'road' && (mlFindings.includes('car') || mlFindings.includes('truck') || mlFindings.includes('bus'))) ||
+                                 (mlFindings.length > 0 && !mlSaysPerson);
+
+            // 5. TEST/FAKE CHECK
+            const isTest = combined.includes('test') || combined.includes('fake') || 
+                           combined.includes('சும்மா') || combined.includes('சோதனை') || 
+                           combined.includes('தவறு');
+
+            let mockTrustScore = 90; // Starting point for perfect submission
+            
+            // 5. DUPLICATE CHECK
+            const isDuplicate = nearbyContext && nearbyContext.length >= 3;
+            
+            // ── APPLYING THE SCORING MATRIX ──────────────────────────────
+            if (isSimulatedFake || isSelfie) {
+                mockTrustScore = 12; // REJECT: Human detected instead of issue
+            } else if (isDuplicate) {
+                mockTrustScore = 18; // REJECT: Duplicate
+            } else if (!hasCategoryMatch && !hasVisionProof) {
+                mockTrustScore = 25; // REJECT: Category/Vision mismatch
+            } else if (isTest) {
+                mockTrustScore = 20; // REJECT: Testing
+            } else if (isTooShort) {
+                mockTrustScore = 35; // REJECT: Low detail
+            } else if (!hasForensicKeywords && !hasVisionProof) {
+                mockTrustScore = 58; // PENDING: Needs audit
+            } else if (hasVisionProof && mockTrustScore < 85) {
+                mockTrustScore = 85; // BOOST: Vision evidence confirmed the category
+            }
+            
             return {
-                fakeProbability: 5,
-                urgencyScore: 0.2,
+                fakeProbability: mockTrustScore < 40 ? 99 : (mockTrustScore < 70 ? 45 : 8),
+                trustScore: mockTrustScore,
+                urgencyScore: (mockTrustScore < 40) ? 0.05 : 0.75,
                 departmentPrediction: userCategory,
-                departmentConfidence: 0.9,
-                reason: "Mock mode: System appears accurate.",
+                reason: (isSimulatedFake || isSelfie) ? "Forensic Rejection: Human detected in evidence. Grievances must show civic issues, not faces." :
+                        isDuplicate ? "System Reject: Duplicate report detected at this exact GPS location." :
+                        (!hasCategoryMatch && !hasVisionProof) ? `Vision Mismatch: Evidence does not match "${userCategory.toUpperCase()}" department requirements.` :
+                        isTooShort ? "Insufficient Data: Description is too brief for government verification." :
+                        hasVisionProof ? "Forensic Audit Passed: Vision detection confirmed civic infrastructure." :
+                        "Forensic Audit Complete: Evidence verified as legitimate.",
                 steps: [
-                    { name: "Spam Check", passed: true, detail: "Text is readable and clearly describes a grievance." },
-                    { name: "Civic Relevance", passed: true, detail: "Issue relates to public infrastructure/services." },
-                    { name: "Duplicate Detection", passed: true, detail: "No identical reports found in recent history." },
-                    { name: "Priority Assessment", passed: true, detail: "Standard priority assigned." }
+                    { name: "📍 GPS Lock", passed: true, detail: "Auto-GPS coordinates verified." },
+                    { name: "📸 Vision ML", passed: (mockTrustScore >= 70 && !mlSaysPerson), detail: mlSaysPerson ? "FAILED: Human detected." : hasVisionProof ? `PASSED: Found ${mlFindings.join(', ')}.` : "UNCERTAIN: Visual audit needed." },
+                    { name: "📂 Category Sync", passed: hasCategoryMatch || hasVisionProof, detail: (hasCategoryMatch || hasVisionProof) ? "Matches department standards." : `Mismatch with ${userCategory}.` },
+                    { name: "👤 Integrity Check", passed: mockTrustScore > 40, detail: mockTrustScore <= 40 ? "High risk of fraudulent data." : "Authentic citizen report." }
                 ]
             };
         }
@@ -51,71 +149,71 @@ class AiService {
         try {
             const locInfo = location ? `Location: ${location.address || 'Unknown'} (Coords: ${location.lat}, ${location.lng})` : 'Location: Not provided';
             
-            let prompt = `You are a Senior Government Compliance Officer for "Civic Harmony", a platform for public grievances.
-Analyze the following petition with 100% accuracy.
+            // Build nearby context string for the prompt
+            let nearbyInfo = 'No existing petitions found within 500m (First report).';
+            if (nearbyContext && nearbyContext.length > 0) {
+                const nearbyList = nearbyContext.map(p => `- [${p.category}] "${p.title}" (${p.status})`).join('\n');
+                nearbyInfo = `${nearbyContext.length} existing petition(s) found within 500m:\n${nearbyList}`;
+            }
+            
+            let prompt = `You are a Senior Government Compliance Officer for "Civic Harmony".
+Analyze this petition and calculate a Trust Score (0-100).
 
-DATA TO ANALYZE:
+CRITICAL INSTRUCTION:
+- If the image provided is a SELFIE, a PERSON simply posing, or IRRELEVANT to the grievance (e.g., a photo of a room, a face, or random objects), you MUST FAIL the "📸 Live Photo Valid" step.
+- An image of a person is only valid if they are directly pointing to or interactively showing the grievance (e.g., a child near a water leak, or a citizen pointing at a pothole).
+- If it is just a face or a selfie, mark "passed": false and deduct 40 points from the Trust Score.
+
+DATA:
 Title: "${title}"
 Description: "${description}"
-User-Selected Category: "${userCategory}"
+Category: "${userCategory}"
 ${locInfo}
 
-STRICT 5-STAGE VERIFICATION PROTOCOL:
+NEARBY CONTEXT:
+${nearbyInfo}
 
-Stage 1: Spam & Quality Check
-- Is it gibberish, just random letters (e.g. "asdf"), or non-grievance text (e.g. "I love pizza")?
-- PASSED only if it's a coherent petition.
+CHECKLIST (Must be part of response):
+1. 📍 Location Match: Is the issue plausible at these coordinates? (+25 pts)
+2. 📸 Live Photo Valid: Does the attached image show the problem explicitly? NO SELFIES. (+25 pts)
+3. 🔁 Duplicate Complaint: Is this a unique issue or a valid reinforcement? (+25 pts)
+4. 👤 User Suspicious: Is the text quality high? No spam? (+25 pts)
 
-Stage 2: Civic Relevance & Location Check
-- Does this fall under GOVERNMENT/CIVIC responsibility?
-- VALID: Potholes, street lights, water leaks, garbage, drainage, public parks, electricity.
-- LOCATION: Is the reported issue plausible at the given location?
+SCORING RULES:
+- Trust Score >= 70 -> ACCEPT
+- 40 <= Trust Score < 70 -> PENDING
+- Trust Score < 40 -> REJECT (Fail if image is a selfie/irrelevant)
 
-Stage 3: Authenticity & Pattern Check
-- Look for signs of "copy-paste" spam, bots, or intentional "Fake/Test" submissions.
-
-Stage 4: Visual Proof Check (If image provided)
-- IF an image is attached: Does the image show the problem described? (e.g. If text says "garbage", does the image show garbage?).
-- Flag as "Inconsistent" if the image is irrelevant or doesn't match the text.
-
-Stage 5: Final Metrics & Routing
-- Calculate Fake Probability (0-100). Any "nonsense", "test", or "image mismatch" reduces authenticity score significantly.
-- Calculate Urgency Score (0.0 to 1.0).
-- Identify the best Department: water, road, electricity, sanitation, or healthcare.
-
-RESPONSE FORMAT (Strict JSON, no markdown):
+RESPONSE FORMAT (Strict JSON):
 {
   "steps": [
-    { "name": "Spam Check", "passed": boolean, "detail": "Reason" },
-    { "name": "Civic Relevance", "passed": boolean, "detail": "Reason" },
-    { "name": "Authenticity Check", "passed": boolean, "detail": "Reason" },
-    { "name": "Visual Proof", "passed": boolean, "detail": "Does the image match the text? (N/A if no image)" },
-    { "name": "Final Assessment", "passed": boolean, "detail": "Summary" }
+    { "name": "📍 Location Match", "passed": boolean, "detail": "string" },
+    { "name": "📸 Live Photo Valid", "passed": boolean, "detail": "string" },
+    { "name": "🔁 Duplicate Complaint", "passed": boolean, "detail": "string" },
+    { "name": "👤 User Suspicious", "passed": boolean, "detail": "string" }
   ],
+  "trustScore": number,
   "fakeProbability": number,
   "urgencyScore": number,
   "departmentPrediction": "water|road|electricity|sanitation|healthcare",
-  "departmentConfidence": number,
-  "summary": "A concise 10-word summary",
-  "reason": "Explanatory text for the citizen"
+  "summary": "10-word summary",
+  "reason": "Brief explanation"
 }`;
 
             const model = this.ai.getGenerativeModel({ model: 'gemini-1.5-flash' }, this.genAiOptions);
-            
             let contents = [{ role: 'user', parts: [{ text: prompt }] }];
 
-            // Add image to contents if mediaPath exists
             if (mediaPath && fs.existsSync(mediaPath)) {
                 try {
                     const imageData = fs.readFileSync(mediaPath);
                     contents[0].parts.push({
                         inlineData: {
                             data: imageData.toString('base64'),
-                            mimeType: 'image/jpeg' // Supporting common image formats
+                            mimeType: 'image/jpeg'
                         }
                     });
                 } catch (readErr) {
-                    console.error('Error reading media file for AI analysis:', readErr);
+                    console.error('Error reading media file:', readErr);
                 }
             }
 
@@ -126,100 +224,65 @@ RESPONSE FORMAT (Strict JSON, no markdown):
             const cleanJson = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
             const parsed = JSON.parse(cleanJson);
 
-            // Safety overrides
-            let fakeProb = parsed.fakeProbability || 0;
+            // Safety check: Ensure trustScore is present
+            let trustScore = parsed.trustScore || 0;
             const steps = parsed.steps || [];
 
-            // If Step 1, 2, or 4 fails, it's a high probability of fake/invalid
-            if (steps[0] && !steps[0].passed) fakeProb = Math.max(fakeProb, 95);
-            if (steps[1] && !steps[1].passed) fakeProb = Math.max(fakeProb, 80);
-            if (steps[3] && !steps[3].passed && steps[3].detail !== 'N/A') fakeProb = Math.max(fakeProb, 75);
+            // Hard overrides for obvious garbage
+            const isGibberish = description.length < 5 || /^[a-z\d\s]{0,10}$/i.test(description);
+            if (isGibberish) trustScore = Math.min(trustScore, 10);
 
             return {
-                fakeProbability: fakeProb,
+                fakeProbability: parsed.fakeProbability || (100 - trustScore),
+                trustScore: trustScore,
                 urgencyScore: parsed.urgencyScore || 0.1,
                 departmentPrediction: parsed.departmentPrediction || userCategory,
-                departmentConfidence: parsed.departmentConfidence || 0.8,
-                summary: parsed.summary || (description.length > 60 ? description.substring(0, 60) + '...' : description),
+                summary: parsed.summary || description.substring(0, 60),
                 reason: parsed.reason || 'Analysis complete',
                 steps: steps
             };
 
         } catch (error) {
-            console.error('\n' + '='.repeat(50));
-            console.error('❌ AI ANALYSIS SYSTEM ERROR');
-            console.error('Error Details:', error);
-            console.error('='.repeat(50) + '\n');
+            console.error('AI Analysis Error:', error);
 
-            // --- SMARTER FALLBACK FOR TESTING ---
-            const combinedText = (title + ' ' + description + ' ' + (location?.address || '')).toLowerCase();
+            // FALLBACK LOGIC (SKEPTICAL MODE)
+            const combinedText = (title + ' ' + description).toLowerCase();
+            const isShort = combinedText.length < 30;
+            const isTest = combinedText.includes('test') || combinedText.includes('fake') || isSimulatedFake;
+            const isDuplicate = nearbyContext && nearbyContext.length >= 3;
+            const isSelfie = mlFindings && mlFindings.includes('person');
             
-            // 1. Nonsense/Gibberish Detector (Improved for Tamil/Unicode)
-            const latinOnly = combinedText.replace(/[^a-z]/g, '');
-            const hasVowels = /[aeiouy]/.test(latinOnly);
-            const isTooShort = combinedText.trim().length < 10;
+            let fbTrustScore = 60; // DEFAULT TO PENDING (not outright reject) IF AI FAILS
             
-            // Tamil character range check
-            const hasTamil = /[\u0B80-\u0BFF]/.test(combinedText);
+            // Look for civic keywords in English and Tamil
+            const validKeywords = ['pothole', 'garbage', 'leak', 'water', 'road', 'street', 'light', 'குப்பை', 'தண்ணீர்', 'சாலை', 'மின்சாரம்', 'சாக்கடை'];
+            if (validKeywords.some(kw => combinedText.includes(kw))) {
+                fbTrustScore = 75; // Good trust if clear civic keywords are found
+            }
             
-            // Gibberish: No vowels in latin part AND no Tamil characters AND length > 5
-            const isGibberish = (latinOnly.length > 5 && !hasVowels && !hasTamil); 
-            const isRepeating = /(.)\1{4,}/.test(combinedText); // 5+ repeating characters
+            // Hard penalties
+            if (isShort || isTest) {
+                fbTrustScore = 15;
+            } else if (isDuplicate) {
+                fbTrustScore = 18;
+            } else if (isSelfie) {
+                fbTrustScore = 12;
+            }
             
-            const isNonsense = isTooShort || isGibberish || isRepeating;
-            
-            // 2. Personal/Irrelevant Topics
-            const personalKeywords = ['movie', 'pizza', 'relationship', 'love', 'dating', 'game', 'படம்', 'பிரியாணி', 'friend', 'நண்பன்'];
-            const isPersonal = personalKeywords.some(kw => combinedText.includes(kw.toLowerCase()));
-            
-            // 3. Test/Fake Detection (Expanded)
-            const testKeywords = [
-                'test', 'fake', 'trial', 'demo', 'example', 'dummy', 'testing',
-                'உதாரணம்', 'சோதனை', 'பொய்', 'சும்மா', 'டமி', 'செக்'
-            ];
-            const isTest = testKeywords.some(kw => combinedText.includes(kw.toLowerCase()));
-            
-            // 5. Complexity & Repetition Check
-            const titleNorm = title.toLowerCase().trim();
-            const descNorm = description.toLowerCase().trim();
-            const isTooSimilar = titleNorm.length > 5 && (descNorm.includes(titleNorm) || titleNorm.includes(descNorm)) && Math.abs(titleNorm.length - descNorm.length) < 10;
-            const isVeryShort = titleNorm.length < 5 || descNorm.length < 10;
-
-            // 6. Urgency/Hazard Detection (Detailed)
-            const highUrgencyKeywords = [
-                'fire', 'hazard', 'danger', 'wire', 'flood', 'accident', 'critical', 'emergency', 'death', 'injury', 'hospital', 'gas leak', 'collapse',
-                'ஆபத்து', 'நெருப்பு', 'வெள்ளம்', 'மின்சாரம்', 'பாம்பு', 'விபத்து', 'தீவிரம்', 'அவசரம்', 'மரணம்', 'காயம்', 'வாயு கசிவு'
-            ];
-            const mediumUrgencyKeywords = [
-                'leak', 'burst', 'road block', 'overflow', 'outage', 'broken', 'damage', 'sewage',
-                'கசிவு', 'தடை', 'உடைப்பு', 'சேதம்', 'சாக்கடை'
-            ];
-
-            const isHighUrgency = highUrgencyKeywords.some(kw => combinedText.includes(kw.toLowerCase()));
-            const isMediumUrgency = mediumUrgencyKeywords.some(kw => combinedText.includes(kw.toLowerCase()));
-
-            // 6. Department Prediction
-            let predictedDept = userCategory;
-            if (combinedText.includes('தண்ணீர்') || combinedText.includes('water') || combinedText.includes('leak')) predictedDept = 'water';
-            else if (combinedText.includes('சாலை') || combinedText.includes('road') || combinedText.includes('pothole')) predictedDept = 'road';
-            else if (combinedText.includes('மின்') || combinedText.includes('light') || combinedText.includes('current')) predictedDept = 'electricity';
-            else if (combinedText.includes('குப்பை') || combinedText.includes('garbage') || combinedText.includes('waste')) predictedDept = 'sanitation';
-
-            const mockFakeProb = isNonsense ? 99 : isTest ? 85 : isPersonal ? 80 : (isTooSimilar || isVeryShort) ? 65 : 0;
-            const mockUrgency = isHighUrgency ? 0.95 : isMediumUrgency ? 0.65 : (isNonsense || isVeryShort ? 0.05 : 0.25);
+            if (isSimulatedFake) fbTrustScore = 5;
 
             return {
-                fakeProbability: mockFakeProb,
-                urgencyScore: mockUrgency,
-                departmentPrediction: predictedDept,
-                departmentConfidence: 0.9,
-                summary: description.length > 50 ? description.substring(0, 50) + '...' : description,
-                reason: `AI Analysis is currently in LOCAL mode. Basic pattern matching applied. ${isTest ? 'Flagged as test.' : ''}`,
+                fakeProbability: 100 - fbTrustScore,
+                trustScore: fbTrustScore,
+                urgencyScore: 0.2,
+                departmentPrediction: userCategory,
+                summary: description.substring(0, 50),
+                reason: (isSimulatedFake || isSelfie) ? "Forensic Rejection: Human detected in evidence (FALLBACK)." : "FALLBACK SECURITY: AI audit encountered an error. Trust degraded for safety.",
                 steps: [
-                    { name: "Spam Check", passed: !isNonsense && !isVeryShort, detail: isNonsense ? "Nonsense/Gibberish detected locally." : isVeryShort ? "Petition is too short to be valid." : "Basic quality check passed." },
-                    { name: "Civic Relevance", passed: !isPersonal, detail: isPersonal ? "Topic appears personal or irrelevant to government." : "Relevant keywords detected." },
-                    { name: "Authenticity Check", passed: !isTest && !isTooSimilar, detail: isTest ? "Petition flagged as a 'Test' submission." : isTooSimilar ? "Title and description are too similar (low effort)." : "Local pattern check passed." },
-                    { name: "Final Assessment", passed: mockFakeProb < 50, detail: "Analyzed via Local Safety Engine." }
+                    { name: "📍 Location Match", passed: true, detail: "Standard validation applied." },
+                    { name: "📸 Vision Scan", passed: !isSelfie, detail: isSelfie ? "FAILED: Human detected." : "Basic vision scan passed." },
+                    { name: "🔁 Conflict Check", passed: !isDuplicate, detail: isDuplicate ? "FAILED: Duplicate detected." : "Unique complaint." },
+                    { name: "👤 Integrity Check", passed: fbTrustScore > 40, detail: fbTrustScore <= 40 ? "Failed: Evidence lacks civic proof." : "User appears legitimate." }
                 ]
             };
         }

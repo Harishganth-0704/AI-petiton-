@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import logo from '@/assets/logo.png';
 import PublicStats from '@/components/PublicStats';
+import PageTransition from '@/components/PageTransition';
 import { ArrowRight, ShieldCheck, Sparkles, Globe, Heart, Brain, Trophy, CheckCircle } from 'lucide-react';
 
 export default function LandingPage() {
   const { t } = useTranslation();
 
   return (
-    <div className="min-h-screen bg-background selection:bg-primary/20">
+    <PageTransition className="min-h-screen bg-background selection:bg-primary/20">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-primary/5">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
@@ -95,7 +96,13 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Dashboard Section */}
-      <section className="bg-white py-24 border-y border-primary/5">
+      <motion.section 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1 }}
+        className="bg-white py-24 border-y border-primary/5"
+      >
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto">
              <div className="flex flex-col items-center text-center mb-16 space-y-4">
@@ -113,12 +120,24 @@ export default function LandingPage() {
             <PublicStats />
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Feature Tiles */}
       <section className="py-24 overflow-hidden bg-[#fafdfd]">
         <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-8">
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.2 }
+              }
+            }}
+            className="grid md:grid-cols-3 gap-8"
+          >
             <FeatureCard
               icon={Brain}
               title="AI Vision Analysis"
@@ -134,7 +153,7 @@ export default function LandingPage() {
               title="Official AI Responses"
               desc="Officials use AI-assisted tools to respond faster and more professionally to every concern you submit."
             />
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -167,21 +186,25 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+    </PageTransition>
   );
 }
 
 function FeatureCard({ icon: Icon, title, desc }: any) {
   return (
     <motion.div
-      whileHover={{ y: -5 }}
-      className="p-8 rounded-[2rem] bg-white border border-primary/5 shadow-sm space-y-4 text-center hover:shadow-xl transition-all duration-300"
+      variants={{
+        hidden: { opacity: 0, y: 30 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+      }}
+      whileHover={{ y: -10, scale: 1.02 }}
+      className="p-8 rounded-[2rem] glass-card space-y-4 text-center transition-all duration-300"
     >
-      <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary mx-auto mb-6">
+      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto mb-6 shadow-inner">
         <Icon className="w-8 h-8" />
       </div>
-      <h3 className="text-xl font-bold font-heading">{title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">
+      <h3 className="text-xl font-black font-heading text-[#0D3B40] uppercase tracking-tighter">{title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed font-medium">
         {desc}
       </p>
     </motion.div>

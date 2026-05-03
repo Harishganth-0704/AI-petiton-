@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import PageTransition from '@/components/PageTransition';
 import logo from '@/assets/logo.png';
 
 export default function LoginPage() {
@@ -71,15 +73,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 gov-gradient-light relative">
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <ThemeToggle variant="dark" />
         <LanguageSwitcher variant="dark" />
       </div>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
+      <PageTransition className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 rounded-2xl bg-white mx-auto flex items-center justify-center shadow-lg mb-4 p-1 overflow-hidden border border-muted/20">
@@ -105,24 +103,24 @@ export default function LoginPage() {
                   icon: User,
                   label: t('role_citizen'),
                   desc: t('role_citizen_desc'),
-                  color: 'bg-blue-50 text-blue-600',
-                  activeColor: 'border-blue-500 bg-blue-50/50'
+                  color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+                  activeColor: 'border-blue-500 bg-blue-500/5 dark:bg-blue-500/20'
                 },
                 {
                   id: 'admin' as const,
                   icon: Shield,
                   label: t('role_admin'),
                   desc: t('role_admin_desc'),
-                  color: 'bg-orange-50 text-orange-600',
-                  activeColor: 'border-orange-500 bg-orange-50/50'
+                  color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+                  activeColor: 'border-orange-500 bg-orange-500/5 dark:bg-orange-500/20'
                 },
                 {
                   id: 'officer' as const,
                   icon: Briefcase,
                   label: t('role_officer'),
                   desc: t('role_officer_desc'),
-                  color: 'bg-green-50 text-green-600',
-                  activeColor: 'border-green-500 bg-green-50/50'
+                  color: 'bg-green-500/10 text-green-600 dark:text-green-400',
+                  activeColor: 'border-green-500 bg-green-500/5 dark:bg-green-500/20'
                 },
               ].map((roleType) => (
                 <button
@@ -259,24 +257,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Register redirect CTA — shown prominently when account not found */}
-            <AnimatePresence>
-              {isNotFound && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="mt-4"
-                >
-                  <Link
-                    to="/register"
-                    className="block w-full text-center py-2.5 px-4 rounded-lg border-2 border-primary text-primary text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
-                  >
-                    {t('create_new_account')}
-                  </Link>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             <div className="mt-5 text-center text-sm">
               <span className="text-muted-foreground">{t('login_no_account')}</span>
               <Link to="/register" className="text-primary hover:underline font-medium">
@@ -285,7 +265,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
-    </div >
+      </PageTransition>
+    </div>
   );
 }

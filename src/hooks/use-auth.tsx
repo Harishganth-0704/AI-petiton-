@@ -40,7 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (identifier: string, password: string): Promise<LoginResult> => {
     try {
-      const res = await fetch('/api/login', {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const res = await fetch(`${baseUrl}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: identifier, password }),
@@ -77,7 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     if (!token) return;
     try {
-      const res = await fetch('/api/auth/me', {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const res = await fetch(`${baseUrl}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
