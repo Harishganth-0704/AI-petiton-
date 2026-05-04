@@ -26,6 +26,21 @@ function signToken(user) {
     );
 }
 
+// ✅ TEST ROUTE FOR EMAIL
+router.get('/test-email', async (req, res) => {
+    try {
+        const info = await emailService.transporter.sendMail({
+            from: process.env.SMTP_FROM || 'test@example.com',
+            to: req.query.email || 'hkanth742@gmail.com',
+            subject: 'Render SMTP Test',
+            html: '<p>This is a test email to verify SMTP configuration on Render.</p>'
+        });
+        res.json({ success: true, info });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message, code: error.code, command: error.command });
+    }
+});
+
 // POST /api/register
 router.post('/register', otpLimiter, async (req, res) => {
     try {
