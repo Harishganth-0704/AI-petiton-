@@ -100,22 +100,24 @@ router.post('/register', otpLimiter, async (req, res) => {
             </div>
         `;
 
-        try {
-            await emailService.sendMail(email, subject, html);
-        } catch (emailErr) {
-            console.error('Registration email error:', emailErr);
-            // We still proceed even if email fails
-        }
-        // Also send OTP via SMS if phone number was provided
-        if (phone) {
-            const smsBody = `Civic Harmony: Your OTP for registration is ${otp}. Valid for 30 seconds.`;
-            smsService.sendSms(phone, smsBody);
-        }
-
+        // ✅ Send response IMMEDIATELY — don't block on email/SMS
         res.status(201).json({
             message: `User registered successfully. Please verify your ${email ? 'email' : 'phone'}.`,
             user: { id: newUser.id, email: newUser.email, phone: newUser.phone },
         });
+
+        // 🔥 Fire email & SMS in background (non-blocking)
+        if (email) {
+            emailService.sendMail(email, subject, html).catch(err =>
+                console.error('Registration email error (background):', err.message)
+            );
+        }
+        if (phone) {
+            const smsBody = `Civic Harmony: Your OTP for registration is ${otp}. Valid for 3 minutes.`;
+            smsService.sendSms(phone, smsBody).catch(err =>
+                console.error('Registration SMS error (background):', err.message)
+            );
+        }
     } catch (error) {
         console.error('Registration error:', error);
         res.status(500).json({ message: 'Server error during registration' });
@@ -161,17 +163,21 @@ router.post('/resend-registration-otp', otpLimiter, async (req, res) => {
             </div>
         `;
 
-        try {
-            if (user.email) await emailService.sendMail(user.email, subject, html);
-            if (user.phone) {
-                const smsBody = `Civic Harmony: Your new OTP for registration is ${otp}. Valid for 3 minutes.`;
-                await smsService.sendSms(user.phone, smsBody);
-            }
-        } catch (sendErr) {
-            console.error('Resend OTP sending error:', sendErr);
-        }
-
+        // ✅ Send response IMMEDIATELY
         res.json({ message: `A new OTP has been sent to your ${user.email && user.phone ? 'email and phone' : user.email ? 'email' : 'phone'}.` });
+
+        // 🔥 Fire email & SMS in background (non-blocking)
+        if (user.email) {
+            emailService.sendMail(user.email, subject, html).catch(err =>
+                console.error('Resend OTP email error (background):', err.message)
+            );
+        }
+        if (user.phone) {
+            const smsBody = `Civic Harmony: Your new OTP for registration is ${otp}. Valid for 3 minutes.`;
+            smsService.sendSms(user.phone, smsBody).catch(err =>
+                console.error('Resend OTP SMS error (background):', err.message)
+            );
+        }
     } catch (error) {
         console.error('Resend OTP error:', error);
         res.status(500).json({ message: error.message || 'Internal server error' });
@@ -346,7 +352,10 @@ router.post('/forgot-password', otpLimiter, async (req, res) => {
         console.log(`[DEVELOPMENT] PASSWORD RESET OTP FOR ${identifier}: ${otp}`);
         console.log('-------------------------------------------');
 
-        // Send OTP via email if user has email
+        // ✅ Send response IMMEDIATELY — don't block on email/SMS
+        res.json({ message: `OTP sent to your ${user.email && user.phone ? 'email and phone' : user.email ? 'email' : 'phone'}` });
+
+        // 🔥 Fire email & SMS in background (non-blocking)
         if (user.email) {
             const subject = 'Your Password Reset OTP';
             const html = `
@@ -362,16 +371,16 @@ router.post('/forgot-password', otpLimiter, async (req, res) => {
                     <small style="color: #888;">This is an automated message, please do not reply.</small>
                 </div>
             `;
-            await emailService.sendMail(user.email, subject, html);
+            emailService.sendMail(user.email, subject, html).catch(err =>
+                console.error('Forgot password email error (background):', err.message)
+            );
         }
-
-        // Send OTP via SMS if user has phone
         if (user.phone) {
             const smsBody = `Civic Harmony: Your OTP for password reset is ${otp}. Valid for 3 minutes.`;
-            smsService.sendSms(user.phone, smsBody);
+            smsService.sendSms(user.phone, smsBody).catch(err =>
+                console.error('Forgot password SMS error (background):', err.message)
+            );
         }
-
-        res.json({ message: `OTP sent to your ${user.email && user.phone ? 'email and phone' : user.email ? 'email' : 'phone'}` });
     } catch (error) {
         console.error('Forgot password error:', error);
         res.status(500).json({ message: error.message || 'Internal server error' });
