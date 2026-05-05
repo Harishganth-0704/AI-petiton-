@@ -144,7 +144,6 @@ export default function RegisterPage() {
             });
             const isJson = response.headers.get('content-type')?.includes('application/json');
             const result = isJson ? await response.json() : null;
-            if (!response.ok) throw new Error(result?.message || `Server error: ${response.status}`);
             toast.success(result.message || t('registration_success'));
             setRegisteredIdentifier({ email: data.email, phone: data.phone });
             setStep(2);
