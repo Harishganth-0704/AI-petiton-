@@ -1,0 +1,33 @@
+{
+    "translation": {
+        "app_name": "Armonía Cívica",
+        "nav_dashboard": "Tablero",
+        "nav_submit": "Enviar Petición",
+        "nav_track": "Rastrear Problemas",
+        "nav_map": "Vista de Mapa",
+        "nav_login": "Iniciar Sesión",
+        "nav_register": "Registrarse",
+        "login_title": "Bienvenido de Nuevo",
+        "login_subtitle": "Ingrese sus credenciales para acceder a su cuenta",
+        "register_title": "Crear una Cuenta",
+        "register_subtitle": "Únase para enviar y rastrear peticiones",
+        "email": "Correo Electrónico",
+        "password": "Contraseña",
+        "full_name": "Nombre Completo",
+        "confirm_password": "Confirmar Contraseña",
+        "language_preference": "Preferencia de Idioma",
+        "submit": "Enviar",
+        "dashboard_title": "Resumen Cívico",
+        "dashboard_subtitle": "Estadísticas en tiempo real en su área",
+        "total_petitions": "Total de Peticiones",
+        "resolved": "Resuelto",
+        "pending": "Pendiente",
+        "escalated": "Escalado",
+        "recent_petitions": "Peticiones Recientes",
+        "status_submitted": "Enviado",
+        "status_in_progress": "En Progreso",
+        "status_resolved": "Resuelto",
+        "logout": "Cerrar Sesión",
+        "no_petitions": "No se encontraron peticiones."
+    }
+}

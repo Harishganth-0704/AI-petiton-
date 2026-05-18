@@ -1,0 +1,33 @@
+{
+    "translation": {
+        "app_name": "التناغم المدني",
+        "nav_dashboard": "لوحة القيادة",
+        "nav_submit": "تقديم عريضة",
+        "nav_track": "تتبع المشاكل",
+        "nav_map": "عرض الخريطة",
+        "nav_login": "تسجيل الدخول",
+        "nav_register": "تسجيل",
+        "login_title": "مرحباً بعودتك",
+        "login_subtitle": "أدخل بياناتك للوصول إلى حسابك",
+        "register_title": "إنشاء حساب",
+        "register_subtitle": "انضم لتقديم وتتبع العرائض",
+        "email": "البريد الإلكتروني",
+        "password": "كلمة المرور",
+        "full_name": "الاسم الكامل",
+        "confirm_password": "تأكيد كلمة المرور",
+        "language_preference": "تفضيل اللغة",
+        "submit": "إرسال",
+        "dashboard_title": "النظرة العامة المدنية",
+        "dashboard_subtitle": "إحصائيات في الوقت الفعلي في منطقتك",
+        "total_petitions": "إجمالي العرائض",
+        "resolved": "تم الحل",
+        "pending": "قيد الانتظار",
+        "escalated": "تم التصعيد",
+        "recent_petitions": "العرائض الأخيرة",
+        "status_submitted": "تم التقديم",
+        "status_in_progress": "قيد التقدم",
+        "status_resolved": "تم الحل",
+        "logout": "تسجيل خروج",
+        "no_petitions": "لم يتم العثور على عرائض."
+    }
+}

@@ -1,0 +1,33 @@
+{
+    "translation": {
+        "app_name": "Bürgerharmonie",
+        "nav_dashboard": "Armaturenbrett",
+        "nav_submit": "Petition einreichen",
+        "nav_track": "Probleme verfolgen",
+        "nav_map": "Kartenansicht",
+        "nav_login": "Anmelden",
+        "nav_register": "Registrieren",
+        "login_title": "Willkommen zurück",
+        "login_subtitle": "Geben Sie Ihre Anmeldedaten ein",
+        "register_title": "Ein Konto erstellen",
+        "register_subtitle": "Treten Sie bei, um Petitionen einzureichen",
+        "email": "E-Mail Adresse",
+        "password": "Passwort",
+        "full_name": "Vollständiger Name",
+        "confirm_password": "Passwort bestätigen",
+        "language_preference": "Spracheinstellung",
+        "submit": "Einreichen",
+        "dashboard_title": "Bürgerübersicht",
+        "dashboard_subtitle": "Echtzeitstatistiken in Ihrer Region",
+        "total_petitions": "Gesamte Petitionen",
+        "resolved": "Behoben",
+        "pending": "Ausstehend",
+        "escalated": "Eskaliert",
+        "recent_petitions": "Aktuelle Petitionen",
+        "status_submitted": "Eingereicht",
+        "status_in_progress": "In Bearbeitung",
+        "status_resolved": "Behoben",
+        "logout": "Abmelden",
+        "no_petitions": "Keine Petitionen gefunden."
+    }
+}
